@@ -4,6 +4,7 @@
     python -m reloj --ventana                en una ventana de 800
     python -m reloj --esfera letras          arranca en esa
     python -m reloj --lista                  qué esferas hay
+    python -m reloj --velocidad 600          una hora de reloj cada 6 s
 
 Con la ventana abierta:
 
@@ -36,6 +37,8 @@ def main():
     p.add_argument("--lado", type=int, default=None,
                    help="lado del dial en px (por defecto, el de la pantalla)")
     p.add_argument("--fps", type=int, default=30)
+    p.add_argument("--velocidad", type=float, default=1.0,
+                   help="multiplica el paso del tiempo (x600: una hora en 6 s)")
     p.add_argument("--ppm", type=float, default=None,
                    help="pulsaciones por minuto para pulso/pulsoxl (no hay sensor)")
     p.add_argument("--lamina", metavar="PNG",
@@ -81,7 +84,7 @@ def main():
 
     from . import pantalla
     pantalla.correr(nombres, arranque, lado=a.lado, ventana=a.ventana,
-                    fps=a.fps)
+                    fps=a.fps, velocidad=a.velocidad)
 
 
 if __name__ == "__main__":

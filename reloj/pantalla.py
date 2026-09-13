@@ -144,8 +144,14 @@ def _rotulo(ren, texto, lado):
 
 
 def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
-           guardar_en="."):
-    """Muestra `nombres[indice]` y deja pasear por el resto con las flechas."""
+           guardar_en=".", velocidad=1.0):
+    """Muestra `nombres[indice]` y deja pasear por el resto con las flechas.
+
+    `velocidad` multiplica el paso del tiempo. No es un juguete: la familia de
+    `eliptica` da una vuelta por HORA y la cámara del toro tarda cinco minutos,
+    así que a velocidad real no hay forma de juzgar si el movimiento funciona.
+    A x600 la vuelta entera dura seis segundos.
+    """
     from .esferas import cargar
 
     if isinstance(nombres, str):
@@ -179,6 +185,10 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
     dst_dial = sdl2.SDL_Rect(ox, oy, lado, lado)
     ev = sdl2.SDL_Event()
     espera = 1.0 / fps
+
+    # Reloj virtual: parte de la hora real y avanza `velocidad` veces más
+    # rápido. A x1 es la hora de verdad.
+    t_virtual, t_real = ahora(), time.time()
 
     m = _Montaje(ren, cargar(nombres[indice]), lado)
     rot, rot_wh = _rotulo(ren, nombres[indice], lado)
@@ -237,7 +247,13 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
                 elif k == sdl2.SDLK_g:
                     foto()
 
-            t = ahora() if hora is None else hora
+            if hora is not None:
+                t = hora
+            else:
+                r = time.time()
+                t_virtual = (t_virtual + (r - t_real) * velocidad) % 86400.0
+                t_real = r
+                t = t_virtual
 
             sdl2.SDL_SetRenderDrawColor(ren, 0, 0, 0, 255)
             sdl2.SDL_RenderClear(ren)

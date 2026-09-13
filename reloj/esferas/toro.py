@@ -21,6 +21,7 @@ import math
 
 import numpy as np
 
+from ..camara import Camara
 from ..esfera import Esfera, Trazo
 from ..lienzo import Lienzo, hsv_arr, tipo
 
@@ -28,10 +29,6 @@ R_DONUT = 1.00      # radio del agujero al centro del tubo
 R_TUBO = 0.42
 CAMARA = 3.55       # distancia del ojo
 FOCO = 2.70
-# El toro mide 1.42 de ancho (R_DONUT + R_TUBO), pero lo que decide el encuadre
-# no es esa medida sino la perspectiva: la parte que se acerca a la cámara sale
-# aumentada. Calculado sobre la distancia media se salía por los lados, así que
-# el valor está puesto a ojo sobre el resultado.
 ZOOM = 0.66
 
 MALLA = 11          # rectas por familia
@@ -66,6 +63,7 @@ class Toro(Esfera):
         Esfera.__init__(self, lado)
         self.f_hora = tipo("RobotoMono-Bold.ttf", lado * 46 / 454.0)
         self.f_pie = tipo("RobotoMono-Bold.ttf", lado * 17 / 454.0)
+        self.cam = Camara(lado, CAMARA, FOCO, ZOOM)
         self._clave = None
         self._trazos = ()
         self._malla = self._tejer()
@@ -90,30 +88,12 @@ class Toro(Esfera):
             fuera.append((tau * (c - w), tau * w))                     # t - 1
         return fuera
 
-    # ---------- cámara ----------
-    def _proyectar(self, p, giro, nada):
-        """Rota, aplica perspectiva y devuelve (píxeles, profundidad)."""
-        ca, sa = math.cos(giro), math.sin(giro)
-        cb, sb = math.cos(nada), math.sin(nada)
-
-        x1 = p[..., 0] * ca - p[..., 1] * sa
-        y1 = p[..., 0] * sa + p[..., 1] * ca
-        z1 = p[..., 2]
-
-        y2 = y1 * cb - z1 * sb
-        z2 = y1 * sb + z1 * cb
-
-        d = y2 + CAMARA
-        k = FOCO / np.maximum(d, 0.35) * ZOOM * self.r
-        xy = np.stack([self.r + x1 * k, self.r - z2 * k], axis=-1)
-        return xy.astype(np.float32), d
-
     def _tinte(self, v, d, brillo):
         """Color por vértice: el TONO lo da la vuelta al tubo, el BRILLO la
         profundidad. Sin z-buffer, la niebla es lo único que dice qué está
         delante — y basta, porque el ojo lee una malla que se apaga al fondo
         como una superficie curva."""
-        cerca = np.clip((CAMARA + 1.0 - d) / 2.0, 0.0, 1.0) ** 1.7
+        cerca = self.cam.niebla(d, 1.7)
         return hsv_arr(0.53 + 0.20 * (np.cos(v) * 0.5 + 0.5),
                        0.62, brillo * (0.10 + 0.90 * cerca))
 
@@ -126,13 +106,13 @@ class Toro(Esfera):
         return self._trazos
 
     def _calcular(self, t):
-        giro = 2 * math.pi * (t / VUELTA)
-        nada = 0.62 + 0.22 * math.sin(2 * math.pi * t / CABECEO)
+        self.cam.mirar(2 * math.pi * (t / VUELTA),
+                       0.62 + 0.22 * math.sin(2 * math.pi * t / CABECEO))
         g = self.lado / 454.0
         fuera = []
 
         for u, v in self._malla:
-            xy, d = self._proyectar(_en_toro(u, v), giro, nada)
+            xy, d = self.cam(_en_toro(u, v))
             fuera.append(Trazo(xy, self._tinte(v, d, self.TEJIDO), 1.7 * g, 225))
 
         # Los dos aros del reloj. El de la HORA rodea el tubo y su posición
@@ -144,15 +124,14 @@ class Toro(Esfera):
 
         for u, v, tono in ((np.full(200, hora), w, 0.10),
                            (w, np.full(200, minuto), 0.47)):
-            xy, d = self._proyectar(_en_toro(u, v), giro, nada)
+            xy, d = self.cam(_en_toro(u, v))
             cerca = np.clip((CAMARA + 1.0 - d) / 2.0, 0.0, 1.0) ** 1.4
             col = hsv_arr(np.full(200, tono), 0.80, 0.25 + 0.75 * cerca)
             fuera.append(Trazo(xy, col, 5.5 * g, 70))     # halo
             fuera.append(Trazo(xy, col, 2.1 * g, 255))    # aro
 
         # El instante: donde se cruzan los dos aros.
-        xy, d = self._proyectar(_en_toro(np.array([hora]), np.array([minuto])),
-                                giro, nada)
+        xy, d = self.cam(_en_toro(np.array([hora]), np.array([minuto])))
         p = xy[0]
         anillo = np.stack([p[0] + 7 * g * np.cos(w), p[1] + 7 * g * np.sin(w)],
                           axis=1).astype(np.float32)

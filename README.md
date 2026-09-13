@@ -40,7 +40,14 @@ python -m reloj --esfera disco --ventana # en una ventana de 800
 python -m reloj --lamina x.png --hora 10:09:38
 python -m reloj --lamina x.png --hora 10:09 1:50 6:30 8:20
 python -m reloj --lamina todas.png --esfera TODAS
+
+python -m reloj --velocidad 600          # una hora de reloj cada 6 segundos
 ```
+
+`--velocidad` no es un juguete: la familia de `eliptica` da una vuelta por
+**hora** y la cámara de `toro` y `hopf` tarda cinco minutos, así que a
+velocidad real no hay forma de juzgar si el movimiento funciona. En la página
+hay los mismos multiplicadores en botones.
 
 (En Linux y en la Pi, `python3` en vez de `python`.)
 
@@ -194,7 +201,7 @@ haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
 ## Las esferas
 
-Están **todas** las del Garmin, más tres nuevas. Dieciocho nombres, ocho módulos:
+Están **todas** las del Garmin, más cuatro nuevas. Diecinueve nombres, nueve módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -206,6 +213,7 @@ Están **todas** las del Garmin, más tres nuevas. Dieciocho nombres, ocho módu
 | `digital` | las ocho tipografías | ocho proyectos Connect IQ pasan a ser un módulo |
 | `eliptica` | `eliptica`, `finita` | **nuevas**: no vienen del reloj (ver abajo) |
 | `toro` | `toro` | **nueva**: la superficie, en 3D |
+| `hopf` | `hopf` | **nueva**: la fibración de Hopf |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -257,6 +265,25 @@ muere. Es el acontecimiento de la esfera, y pasa una vez por hora.
 No se dibuja una curva sino **las dieciséis últimas**, la de ahora encendida y
 las anteriores apagándose: una sola línea se pierde en una pantalla grande, y
 la familia enseña de dónde viene la forma y hacia dónde va.
+
+**`hopf`** — un reloj de eslabones.
+
+La fibración de Hopf manda `S³` a `S²`, y **cada punto de `S²` es un círculo
+entero** de `S³`. Proyectados a nuestro espacio siguen siendo círculos, y dos
+cualesquiera están **enlazados exactamente una vez**. Nunca sueltos, nunca dos
+veces.
+
+De ahí sale el reloj sin forzar nada: la hora es un punto de `S²` y su círculo;
+el minuto, otro punto y otro círculo. Dos puntos distintos, **dos círculos
+encadenados** que giran uno dentro del otro. Detrás, las fibras de tres
+paralelos: cada paralelo da un toro de círculos anidados.
+
+Dos cosas que salieron de mirarlo. Con cuatro paralelos y ocho fibras cada uno
+era una maraña — lo que hace ver los toros no es la variedad de tamaños sino
+tener **bastantes fibras en cada paralelo**, y con catorce el toro se insinúa
+solo. Y ningún paralelo puede acercarse a `π`: la fibra sobre el polo sur pasa
+por el punto desde el que se proyecta, así que se va al infinito y sale como
+una recta cruzando la pantalla.
 
 **`toro`** — la curva como lo que de verdad es.
 

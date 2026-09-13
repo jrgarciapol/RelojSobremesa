@@ -247,11 +247,15 @@ def hsv_arr(h, s, v):
     en un bucle de Python eso son 33.000 llamadas por segundo, que en una Pi
     Zero se come el fotograma entero. Vectorizado cuesta microsegundos.
     """
-    h = np.mod(np.asarray(h, np.float32), 1.0) * 6.0
+    # Los tres pueden llegar como escalar o como array, y en cualquier mezcla:
+    # el tono suele ser fijo y el brillo variar con la profundidad, o al revés.
+    # `broadcast_arrays` los pone a los tres en la misma forma sea cual sea.
+    h, s, v = np.broadcast_arrays(np.asarray(h, np.float32),
+                                  np.asarray(s, np.float32),
+                                  np.asarray(v, np.float32))
+    h = np.mod(h, 1.0) * 6.0
     i = np.floor(h).astype(np.intp) % 6
     f = h - np.floor(h)
-    s = np.broadcast_to(np.asarray(s, np.float32), h.shape)
-    v = np.broadcast_to(np.asarray(v, np.float32), h.shape)
     p_, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
     r = np.choose(i, [v, q, p_, p_, t, v])
     g = np.choose(i, [t, v, v, q, p_, p_])
