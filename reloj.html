@@ -163,8 +163,8 @@ body.limpio main { padding: 0; gap: 2px; height: 100vh; align-content: center; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las quince de <b>RelojSobremesa</b>, en marcha ·
-    misma geometría que el Garmin, en fracción de pantalla</span>
+  <span class="sub">Las diecisiete de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin y dos de curvas elípticas</span>
 </header>
 
 <div class="mandos">
@@ -173,7 +173,7 @@ body.limpio main { padding: 0; gap: 2px; height: 100vh; align-content: center; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="15">las 15</button>
+    <button id="g15" data-n="17">todas</button>
   </div>
 
   <div class="grupo">
@@ -596,10 +596,190 @@ function rosa(vivid) {
   };
 }
 
+
+/* =====================================================================
+   Curvas elípticas — de elliptic-curves.art (Hajouji y Trettel).
+   Una curva elíptica ES un toro: C/L. Y un toro son dos ángulos, que es
+   exactamente lo que es un reloj. La ley de grupo es sumar ángulos.
+   ===================================================================== */
+const X0 = -2.60, X1 = 2.60, YTOPE = 2.40;
+const ESTELA = 16, ANCHO_ESTELA = 0.10;
+
+function parametros(fase) {
+  return [1.3 * Math.cos(2*Math.PI*fase) - 0.5, 1.1 * Math.sin(2*Math.PI*fase)];
+}
+
+// Raíces reales de x³ + ax + (b - c). Por muestreo y bisección: es robusto,
+// cuesta nada y evita los tres casos del método de Cardano.
+function raices(a, b, c) {
+  const f = x => x*x*x + a*x + b - c, R = [], N = 500, lo = -4, hi = 4;
+  let px = lo, pf = f(lo);
+  for (let i = 1; i <= N; i++) {
+    const x = lo + (hi - lo) * i / N, fx = f(x);
+    if (pf * fx < 0) {
+      let A = px, B = x;
+      for (let k = 0; k < 50; k++) {
+        const M = (A + B) / 2;
+        if (f(A) * f(M) <= 0) B = M; else A = M;
+      }
+      R.push((A + B) / 2);
+    }
+    px = x; pf = fx;
+  }
+  return R;
+}
+
+// x0 es siempre una raíz. Se entra por la rama negativa, se pasa por la raíz
+// y se sale por la positiva: trazo abierto, sin segmento de cierre. Al revés
+// queda una raya vertical donde la rama se corta contra el borde.
+function lazo(a, b, x0, x1, n) {
+  const pts = [];
+  for (let i = n; i >= 0; i--) {
+    const x = x0 + (x1 - x0) * (1 - Math.cos(Math.PI * i / n)) / 2;
+    pts.push([x, -Math.sqrt(Math.max(x*x*x + a*x + b, 0))]);
+  }
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + (x1 - x0) * (1 - Math.cos(Math.PI * i / n)) / 2;
+    pts.push([x, Math.sqrt(Math.max(x*x*x + a*x + b, 0))]);
+  }
+  return pts;
+}
+
+function trozos(a, b) {
+  const r = raices(a, b, 0);
+  if (!r.length) return [];
+  const alto = raices(a, b, YTOPE * YTOPE);
+  const tope = alto.length ? Math.min(alto[alto.length-1], X1) : X1;
+  if (r.length === 3) return [lazo(a, b, r[0], r[1], 120), lazo(a, b, r[2], tope, 120)];
+  return [lazo(a, b, r[r.length-1], tope, 120)];
+}
+
+const baseEliptica = digital("barriecito",
+  { time:"#FFFFFF", verde:"#64D8C6", mes:"#6E7A93" });
+
+const eliptica = {
+  familia: "Barriecito",
+  dibujar(c, L, t) {
+    const k = L / (X1 - X0), r = L / 2;
+    const fase = (t / 3600) % 1;
+    c.lineCap = "round"; c.lineJoin = "round";
+    // De la más vieja a la más nueva, para que la de ahora quede encima.
+    for (let i = ESTELA - 1; i >= 0; i--) {
+      const f = i / (ESTELA - 1);
+      const [a, b] = parametros(fase - f * ANCHO_ESTELA);
+      c.strokeStyle = hsv(0.52 + 0.16*f, 0.72, 0.14 + 0.86*Math.pow(1-f, 2.2));
+      c.lineWidth = L * (1 + 2.4*Math.pow(1-f, 3)) / 454;
+      c.globalAlpha = i === 0 ? 1 : 0.75;
+      for (const pts of trozos(a, b)) {
+        c.beginPath();
+        pts.forEach(([x, y], j) => {
+          const px = (x - X0) * k, py = r - y * k;
+          j ? c.lineTo(px, py) : c.moveTo(px, py);
+        });
+        c.stroke();
+      }
+    }
+    c.globalAlpha = 1;
+    // La hora, velada: la curva se ve a través de las cifras.
+    c.save(); c.globalAlpha = 170/255;
+    baseEliptica.dibujar(c, L, t);
+    c.restore();
+  }
+};
+
+/* ---------- finita: la ley de grupo sobre F_p ---------- */
+const PRIMOS = [23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71];
+
+function inverso(x, p) {          // Euclides extendido: JS no tiene pow(x,-1,p)
+  let a = ((x % p) + p) % p, b = p, u = 1, v = 0;
+  while (b) { const q = Math.floor(a / b); [a, b] = [b, a - q*b]; [u, v] = [v, u - q*v]; }
+  return ((u % p) + p) % p;
+}
+
+function suma(P, Q, a, p) {
+  if (!P) return Q;
+  if (!Q) return P;
+  const [x1, y1] = P, [x2, y2] = Q;
+  if (x1 === x2 && (y1 + y2) % p === 0) return null;
+  const lam = (P[0] === Q[0] && P[1] === Q[1])
+    ? (3*x1*x1 + a) * inverso(2*y1, p) % p
+    : (y2 - y1 + p) * inverso(x2 - x1, p) % p;
+  const x3 = ((lam*lam - x1 - x2) % p + p) % p;
+  return [x3, ((lam*(x1 - x3) - y1) % p + p) % p];
+}
+
+function pasos(P, a, b, p) {
+  const r = [P];
+  let Q = P;
+  for (let i = 0; i < 2*p + 8; i++) {
+    Q = suma(Q, P, a, p);
+    if (!Q) { r.push(P); break; }
+    r.push(Q);
+    if (Q[0] === P[0] && Q[1] === P[1]) break;
+  }
+  return r;
+}
+
+// El generador de MAYOR orden, no el primero que aparezca: a las 5:41 sobre
+// F43 el primero da cuatro pasos —una raya— y el mejor da 51.
+function orbita(p, a, b) {
+  let mejor = [];
+  for (let x = 0; x < p; x++) {
+    const d = ((x*x*x + a*x + b) % p + p) % p;
+    for (let y = 0; y < p; y++) {
+      if (y*y % p === d) {
+        const r = pasos([x, y], a, b, p);
+        if (r.length > mejor.length) mejor = r;
+        break;
+      }
+    }
+  }
+  return mejor;
+}
+
+const finita = {
+  familia: "Barriecito",
+  MARGEN: 0.09,
+  cache: {},
+  dibujar(c, L, t) {
+    const hora = Math.floor(t/3600) % 24, minuto = Math.floor(t/60) % 60;
+    const p = PRIMOS[hora % 12];
+    const clave = p + ":" + minuto;
+    if (this.cache.clave !== clave) {
+      this.cache = { clave, pts: orbita(p, minuto, 1) };
+    }
+    const pts = this.cache.pts;
+    const util = L * (1 - 2*this.MARGEN), borde = L * this.MARGEN;
+    const en = ([x, y]) => [borde + x/(p-1)*util, borde + y/(p-1)*util];
+
+    c.lineCap = "round"; c.lineJoin = "round";
+    for (const [ancho, alfa] of [[5.0, 0.22], [1.7, 0.92]]) {
+      c.lineWidth = ancho * L / 454;
+      c.globalAlpha = alfa;
+      for (let i = 0; i < pts.length - 1; i++) {
+        c.strokeStyle = hsv(0.48 + 0.34*i/(pts.length-1), 0.68, 1);
+        c.beginPath();
+        const A = en(pts[i]), B = en(pts[i+1]);
+        c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]);
+        c.stroke();
+      }
+    }
+    c.globalAlpha = 1;
+
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${L*120/EPIX}px "Barriecito"`;
+    c.fillStyle = "rgba(255,255,255,.85)";
+    c.fillText(`${hora % 12 || 12}:${String(minuto).padStart(2,"0")}`, L/2, L*0.50);
+    c.font = `${L*19/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "#8DA2B8";
+    c.fillText(`y² = x³ + ${minuto}x + 1   sobre F${p}`, L/2, L*0.915);
+  }
+};
+
 /* ===================================================================== */
 const ESFERAS = {
   bangers: digital("bangers"), barriecito: digital("barriecito"),
-  caesar: digital("caesar"), disco, honk: digital("honk"),
+  caesar: digital("caesar"), disco, eliptica, finita, honk: digital("honk"),
   letras, londrina: digital("londrina"), orbita,
   pulso: pulso(false), pulsoxl: pulso(true),
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
@@ -634,7 +814,7 @@ function visibles() {
 }
 
 function montar() {
-  const cols = cuantas === 1 ? 1 : cuantas === 4 ? 2 : cuantas === 9 ? 3 : 5;
+  const cols = cuantas === 1 ? 1 : cuantas === 4 ? 2 : cuantas === 9 ? 3 : 6;
   rejilla.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   rejilla.style.maxWidth = cuantas === 1 ? "min(88vh, 100%)" : "none";
   rejilla.innerHTML = "";
@@ -704,7 +884,7 @@ addEventListener("keydown", e => {
   else if (k === "1") { cuantas = 1; montar(); }
   else if (k === "2") { cuantas = 4; montar(); }
   else if (k === "3") { cuantas = 9; montar(); }
-  else if (k === "0") { cuantas = 15; montar(); }
+  else if (k === "0") { cuantas = NOMBRES.length; montar(); }
   else if (k === "f") pantallaCompleta();
   else if (k === "h") document.body.classList.toggle("limpio");
   else return;
