@@ -165,7 +165,8 @@ main { overflow: hidden; }
 <header>
   <h1>Banco de esferas</h1>
   <span class="sub">Las dieciocho de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin y tres de curvas elípticas</span>
+    quince del Garmin y tres de curvas elípticas ·
+    abre por la última, <b>toro</b></span>
 </header>
 
 <div class="mandos">
@@ -900,7 +901,11 @@ const ESFERAS = {
 const NOMBRES = Object.keys(ESFERAS);
 
 /* ---------- estado ---------- */
-let indice = NOMBRES.indexOf("disco");
+// Se abre por la ÚLTIMA esfera añadida, no por la primera del catálogo. Con
+// `disco` de arranque, añadir una esfera nueva no cambiaba nada de lo que se
+// ve al abrir: la nueva quedaba al final de la fila de chips, fuera de la
+// rejilla, y la página parecía la misma de siempre.
+let indice = NOMBRES.length - 1;
 let cuantas = 4;
 let enVivo = true;
 let horaFija = 36578;
