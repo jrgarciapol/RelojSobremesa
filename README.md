@@ -60,6 +60,28 @@ Con `--lamina` no abre pantalla ni toca SDL: compone con Pillow y guarda un
 PNG. Sirve para trabajar el diseño sin tener la Pi delante — y sin la Pi
 siquiera.
 
+## Verlas sin la Raspberry: `reloj.html`
+
+Una reimplementación en Canvas de las quince, en una página suelta. Doble clic
+y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o las quince a la vez,
+pantalla completa, un cursor para recorrer el día y otro para las pulsaciones.
+
+Sirve para tres cosas que la versión de Python no da:
+
+* verlas moverse **sin tener la Pi ni el monitor delante**;
+* **compararlas en movimiento**, varias a la vez en la misma pantalla;
+* abrirlas en el móvil o en el televisor, que es a donde va esto.
+
+Y sale gratis en tipografías: las ocho son de Google Fonts, así que la página
+las carga nativas. De regalo, **Honk sale en color**, que es como es de verdad
+— Pillow solo pinta su capa base, así que en la versión de Python (y en el
+Garmin) salía en contorno.
+
+> **La que manda es la de Python.** Son dos implementaciones de lo mismo y
+> pueden separarse. Las constantes llevan los mismos nombres y los mismos
+> divisores entre 454 para que se puedan comparar de un vistazo, pero si algo
+> no cuadra, la buena es `reloj/esferas/`.
+
 ## Cómo está montado
 
 ```

@@ -1,0 +1,745 @@
+<title>Banco de esferas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Barriecito&family=Caesar+Dressing&family=Honk&family=Londrina+Shadow&family=Rampart+One&family=Roboto+Mono:wght@400;500;700&family=Smokum&family=Sue+Ellen+Francisco&display=swap">
+
+<style>
+/* Tema único y deliberado: oscuro. Las quince esferas son diseños de fondo
+   negro puro pensados para AMOLED; sobre un cromo claro no se pueden juzgar,
+   así que la página se compromete con un solo mundo y lo pinta entero. */
+:root {
+  --fondo:   #0b0c0e;   /* casi negro, con sesgo azulado */
+  --panel:   #15171a;
+  --raya:    #23262a;
+  --tinta:   #e6e8ea;
+  --apagado: #7e858c;
+  --ambar:   #f7c81e;   /* la tinta de Disco: el acento sale del propio proyecto */
+  --ambar-t: #4a3c0c;
+  --mono: "Roboto Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--mono);
+  font-size: 13px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- cabecera ---------- */
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--raya);
+  flex-wrap: wrap;
+}
+h1 {
+  font-family: "Barriecito", var(--mono);
+  font-size: 26px;
+  font-weight: 400;
+  margin: 0;
+  color: var(--ambar);
+  letter-spacing: .5px;
+}
+.sub { color: var(--apagado); font-size: 12px; }
+.sub b { color: var(--tinta); font-weight: 500; }
+
+/* ---------- controles ---------- */
+.mandos {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--raya);
+  background: var(--panel);
+}
+.grupo { display: flex; align-items: center; gap: 8px; }
+.et {
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  font-size: 10px;
+  color: var(--apagado);
+}
+
+button, .chip {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--tinta);
+  background: transparent;
+  border: 1px solid var(--raya);
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+button:hover, .chip:hover { border-color: var(--apagado); }
+button[aria-pressed="true"], .chip[aria-pressed="true"] {
+  color: #14161a;
+  background: var(--ambar);
+  border-color: var(--ambar);
+  font-weight: 700;
+}
+:focus-visible { outline: 2px solid var(--ambar); outline-offset: 2px; }
+
+input[type="range"] { accent-color: var(--ambar); width: 130px; }
+.cifra { font-variant-numeric: tabular-nums; color: var(--tinta); min-width: 62px; }
+
+/* ---------- selector de esferas ---------- */
+.esferas {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--raya);
+}
+.chip { padding: 4px 9px; font-size: 11px; }
+
+/* ---------- rejilla ---------- */
+main {
+  flex: 1;
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 18px;
+  align-content: start;
+  justify-items: center;
+}
+.celda { width: 100%; max-width: 100%; position: relative; }
+canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 100%;
+  background: #000;
+  border-radius: 2px;
+}
+.nombre {
+  position: absolute;
+  left: 8px; top: 6px;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(230, 232, 234, .38);
+  pointer-events: none;
+}
+
+/* ---------- pie ---------- */
+footer {
+  padding: 0 18px 18px;
+  color: var(--apagado);
+  font-size: 11px;
+  line-height: 1.7;
+  max-width: 68ch;
+}
+kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  border: 1px solid var(--raya);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--tinta);
+}
+
+/* En pantalla completa desaparece todo el cromo: queda el reloj. */
+body.limpio header,
+body.limpio .mandos,
+body.limpio .esferas,
+body.limpio footer,
+body.limpio .nombre { display: none; }
+body.limpio main { padding: 0; gap: 2px; height: 100vh; align-content: center; }
+
+@media (max-width: 560px) {
+  .mandos { gap: 14px; }
+  input[type="range"] { width: 92px; }
+}
+@media (prefers-reduced-motion: reduce) { /* el reloj es el contenido: sigue */ }
+</style>
+
+<header>
+  <h1>Banco de esferas</h1>
+  <span class="sub">Las quince de <b>RelojSobremesa</b>, en marcha ·
+    misma geometría que el Garmin, en fracción de pantalla</span>
+</header>
+
+<div class="mandos">
+  <div class="grupo">
+    <span class="et">Rejilla</span>
+    <button id="g1" data-n="1">1</button>
+    <button id="g4" data-n="4">2×2</button>
+    <button id="g9" data-n="9">3×3</button>
+    <button id="g15" data-n="15">las 15</button>
+  </div>
+
+  <div class="grupo">
+    <span class="et">Hora</span>
+    <button id="vivo" aria-pressed="true">en vivo</button>
+    <input type="range" id="reloj" min="0" max="86399" step="1" value="36578"
+           aria-label="Hora del día">
+    <span class="cifra" id="horaTxt">—</span>
+  </div>
+
+  <div class="grupo">
+    <span class="et">Pulso</span>
+    <input type="range" id="ppm" min="45" max="185" step="1" value="72"
+           aria-label="Pulsaciones por minuto">
+    <span class="cifra" id="ppmTxt">72 ppm</span>
+  </div>
+
+  <div class="grupo">
+    <button id="pantalla">Pantalla completa</button>
+  </div>
+</div>
+
+<div class="esferas" id="chips"></div>
+
+<main id="rejilla"></main>
+
+<footer>
+  <kbd>←</kbd> <kbd>→</kbd> cambiar de esfera ·
+  <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>0</kbd> rejilla ·
+  <kbd>F</kbd> pantalla completa ·
+  <kbd>H</kbd> esconder los mandos ·
+  <kbd>Esc</kbd> volver.
+  <br>
+  Reimplementación en Canvas de las esferas de Python, para verlas moverse sin
+  la Raspberry delante. Las constantes son las mismas y llevan los mismos
+  nombres; la que manda es la de Python.
+</footer>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   Utilidades. Toda la geometría viene de las esferas de Python, que a su
+   vez la heredan del Garmin: los números originales estaban en píxeles
+   sobre los 454 del Epix Pro y aquí se dividen por 454, igual que allí.
+   ===================================================================== */
+const EPIX = 454;
+
+function hsv(h, s, v) {
+  h -= Math.floor(h);
+  const i = Math.floor(h * 6) % 6, f = h * 6 - Math.floor(h * 6);
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  const [r, g, b] = [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i];
+  return `rgb(${r*255|0},${g*255|0},${b*255|0})`;
+}
+
+function poly(c, pts, color) {
+  c.beginPath();
+  pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
+  c.closePath();
+  c.fillStyle = color;
+  c.fill();
+}
+
+function circ(c, x, y, r, color) {
+  if (r < 0.2) return;
+  c.beginPath();
+  c.arc(x, y, r, 0, Math.PI * 2);
+  c.fillStyle = color;
+  c.fill();
+}
+
+/* Una aguja de punta de lanza, con el pivote en (cx, cy) y girada `grados`
+   desde las 12. Cinco vértices: punta · hombro · cola · cola · hombro. */
+function aguja(c, cx, cy, grados, largo, cola, wCola, wCuerpo, kHombro, tinta, bisel) {
+  const a = (grados - 90) * Math.PI / 180;
+  const ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux;
+  const bx = cx - ux * cola, by = cy - uy * cola;
+  const sx = cx + ux * largo * kHombro, sy = cy + uy * largo * kHombro;
+  const ht = wCola / 2, hb = wCuerpo / 2;
+  const p = [
+    [cx + ux * largo, cy + uy * largo],
+    [sx + px * hb, sy + py * hb],
+    [bx + px * ht, by + py * ht],
+    [bx - px * ht, by - py * ht],
+    [sx - px * hb, sy - py * hb],
+  ];
+  poly(c, p, tinta);
+  if (bisel) poly(c, [p[0], p[1], p[2], [bx, by]], bisel);
+}
+
+const DIAS = ["DOM","LUN","MAR","MIE","JUE","VIE","SAB"];
+const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+
+let PPM = 72;
+
+/* =====================================================================
+   disco — analógica minimalista, ámbar sobre negro
+   ===================================================================== */
+const D = {
+  TICK:"#7A5E10", TICK_Q:"#C9A21E", TINTA:"#F7C81E", BISEL:"#FFE49A", PIVOTE:"#FFF0C4",
+  SEG:"#C9A21E",
+  L_MIN:215/227, L_HOUR:142/227, L_SEG:222/227, COLA:34/227,
+  R_DISCO:27/227, R_PIVOTE:5/227,
+  TICK_W_Q:26/227, TICK_W:17/227,
+  R_IN_Q:0.775, R_IN:0.855, R_OUT:0.955,
+};
+
+const disco = {
+  dibujar(c, L, t) {
+    const r = L / 2;
+    for (let i = 0; i < 12; i++) {
+      const a = (i * 30 - 90) * Math.PI / 180;
+      const ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux;
+      const q = i % 3 === 0;
+      const hw = r * (q ? D.TICK_W_Q : D.TICK_W) / 2;
+      const r1 = r * (q ? D.R_IN_Q : D.R_IN), r2 = r * D.R_OUT;
+      poly(c, [
+        [r + ux*r1 + px*hw, r + uy*r1 + py*hw],
+        [r + ux*r2 + px*hw, r + uy*r2 + py*hw],
+        [r + ux*r2 - px*hw, r + uy*r2 - py*hw],
+        [r + ux*r1 - px*hw, r + uy*r1 - py*hw],
+      ], q ? D.TICK_Q : D.TICK);
+    }
+    // Siete anillos concéntricos, cada uno más oscuro y descentrado hacia
+    // abajo a la derecha: es lo que finge la luz sin degradados.
+    const rd = r * D.R_DISCO;
+    for (let i = 0; i < 7; i++) {
+      const f = i / 6, v = Math.round(0x5E + (0x1C - 0x5E) * f);
+      circ(c, r - rd*0.10*(1-f), r - rd*0.13*(1-f), rd*(1 - i*0.09),
+           `rgb(${v},${v+1},${v+2})`);
+    }
+    aguja(c, r, r, (t/3600 % 12)*30, r*D.L_HOUR, r*D.COLA,
+          r*16/227, r*13/227, 0.60, D.TINTA, D.BISEL);
+    aguja(c, r, r, (t/60 % 60)*6, r*D.L_MIN, r*D.COLA,
+          r*13/227, r*10/227, 0.66, D.TINTA, D.BISEL);
+    aguja(c, r, r, (t % 60)*6, r*D.L_SEG, r*D.COLA*1.6,
+          r*5/227, r*3/227, 0.90, D.SEG, null);
+    circ(c, r, r, r * D.R_PIVOTE, D.PIVOTE);
+  }
+};
+
+/* =====================================================================
+   digital — día arriba, hora enorme, fecha abajo. Ocho tipografías.
+   Cada una lleva SU cuerpo, ajustado a ojo en el reloj: a igualdad de
+   cuerpo nominal cada tipografía ocupa un ancho distinto, y con 196 para
+   todas Rampart y Bangers se salían del marco.
+   ===================================================================== */
+const FUENTES = {
+  bangers:    ["Bangers",              170,  94, 85],
+  barriecito: ["Barriecito",           196, 108, 92],
+  caesar:     ["Caesar Dressing",      172,  95, 86],
+  honk:       ["Honk",                 174,  96, 87],
+  londrina:   ["Londrina Shadow",      192, 106, 92],
+  rampart:    ["Rampart One",          152,  84, 76],
+  smokum:     ["Smokum",               208, 110, 92],
+  sueellen:   ["Sue Ellen Francisco",  208, 110, 92],
+};
+const Y_WDAY = 0.200, Y_TIME = 0.500, Y_DATE = 0.815, HUECO = 14 / EPIX;
+
+function digital(clave, col) {
+  const [fam, cT, cN, cM] = FUENTES[clave];
+  const C = Object.assign({ time:"#FFFFFF", verde:"#00FF00", mes:"#1E9BFF" }, col || {});
+  return {
+    familia: fam,
+    dibujar(c, L, t) {
+      const cx = L / 2, ahora = new Date();
+      const fT = `${L*cT/EPIX}px "${fam}"`;
+      const fN = `${L*cN/EPIX}px "${fam}"`;
+      const fM = `${L*cM/EPIX}px "${fam}"`;
+      c.textBaseline = "middle";
+
+      c.font = fM; c.textAlign = "center"; c.fillStyle = C.verde;
+      c.fillText(DIAS[ahora.getDay()], cx, L * Y_WDAY);
+
+      // Tres bloques —HH · : · MM— con los dos puntos ceñidos a media caja.
+      // Medir HH y MM por separado es lo que centra 9:24 y 10:24 por igual.
+      const hh = String(Math.floor(t/3600) % 24), mm = String(Math.floor(t/60) % 60).padStart(2,"0");
+      c.font = fT;
+      const wH = c.measureText(hh).width, hueco = c.measureText(":").width / 2;
+      let x = cx - (wH + hueco + c.measureText(mm).width) / 2;
+      c.textAlign = "left"; c.fillStyle = C.time;
+      c.fillText(hh, x, L * Y_TIME);
+      c.textAlign = "center";
+      c.fillText(":", x + wH + hueco/2, L * Y_TIME);
+      c.textAlign = "left";
+      c.fillText(mm, x + wH + hueco, L * Y_TIME);
+
+      const num = String(ahora.getDate()), mon = MESES[ahora.getMonth()];
+      c.font = fN;
+      const wN = c.measureText(num).width;
+      c.font = fM;
+      const wM = c.measureText(mon).width;
+      x = cx - (wN + L*HUECO + wM) / 2;
+      c.font = fN; c.fillStyle = C.verde;
+      c.fillText(num, x, L * Y_DATE);
+      c.font = fM; c.fillStyle = C.mes;
+      c.fillText(mon, x + wN + L*HUECO, L * Y_DATE);
+    }
+  };
+}
+
+/* =====================================================================
+   letras — la hora en castellano
+   ===================================================================== */
+const HORAS = ["DOCE","UNA","DOS","TRES","CUATRO","CINCO",
+               "SEIS","SIETE","OCHO","NUEVE","DIEZ","ONCE"];
+const CANT = {30:"MEDIA", 15:"CUARTO", 5:"CINCO", 10:"DIEZ", 20:"VEINTE", 25:"VEINTICINCO"};
+
+function frase(hora, minuto) {
+  const m = Math.floor((minuto + 2) / 5) * 5;
+  const h = hora + (m >= 35 ? 1 : 0);
+  if (m === 0 || m === 60) return [HORAS[h % 12], "EN", "PUNTO"];
+  const n = m <= 30 ? m : 60 - m;
+  return [HORAS[h % 12], m <= 30 ? "Y" : "MENOS", CANT[n]];
+}
+
+const letras = {
+  familia: "Barriecito",
+  dibujar(c, L, t) {
+    const [h, enlace, mins] = frase(Math.floor(t/3600) % 24, Math.floor(t/60) % 60);
+    const cuatro = mins === "VEINTICINCO";
+    const ys = cuatro ? [0.175, 0.385, 0.605, 0.825] : [0.240, 0.500, 0.760];
+    const palabras = cuatro ? [h, enlace, "VEINTI", "CINCO"] : [h, enlace, mins];
+    const cols = cuatro
+      ? ["#F3E7D3", "#FF8C1B", "#FFB020", "#FFB020"]
+      : ["#F3E7D3", "#FF8C1B", "#FFB020"];
+    c.font = `${L * (cuatro ? 100 : 116) / EPIX}px "Barriecito"`;
+    c.textAlign = "center"; c.textBaseline = "middle";
+    palabras.forEach((p, i) => { c.fillStyle = cols[i]; c.fillText(p, L/2, L*ys[i]); });
+  }
+};
+
+/* =====================================================================
+   orbita y pulso — sobre la maquetación digital
+   ===================================================================== */
+const R_ORB = 211 / 227;
+
+function enOrbita(L, grados) {
+  const r = L/2, a = (grados - 90) * Math.PI / 180;
+  return [r + r*R_ORB*Math.cos(a), r + r*R_ORB*Math.sin(a)];
+}
+
+const baseVerde = digital("barriecito");
+const basePulso = digital("barriecito", { verde:"#6FDC8C", mes:"#93A6B2" });
+
+const orbita = {
+  familia: "Barriecito",
+  dibujar(c, L, t) {
+    const r = L/2, seg = t % 60;
+    // Estela primero, del más lejano y apagado al más cercano; después el
+    // orbe. Todo por DETRÁS de la hora, igual que en el reloj.
+    for (let k = 5; k >= 1; k--) {
+      const s = ((seg - k) % 60 + 60) % 60, f = 1 - k/6;
+      const [x, y] = enOrbita(L, s*6);
+      circ(c, x, y, r*(3 + 3*f)/227, hsv(s/60, 1, 0.30 + 0.55*f));
+    }
+    const [x, y] = enOrbita(L, seg*6), h = seg/60;
+    circ(c, x, y, r*13/227, hsv(h,1,0.28));
+    circ(c, x, y, r*9/227,  hsv(h,1,0.62));
+    circ(c, x, y, r*6/227,  hsv(h,1,1.00));
+    baseVerde.dibujar(c, L, t);
+  }
+};
+
+const H_WARM = 0.07, H_COOL = 0.53;
+const DEG_PER_BEAT = 12, TRAVEL_BEATS = 15, MERGE_BEATS = 3;
+const CYCLE_BEATS = TRAVEL_BEATS + MERGE_BEATS;
+const TRAIL_DOTS = 8, TRAIL_SECS = 1.5, ANILLOS = 7;
+
+function colorOrbe(t, calido, v) {
+  const tt = Math.min(1, Math.max(0, t)), sat = Math.pow(tt, 0.7);
+  return calido ? hsv(H_WARM, sat*0.85, v) : hsv(H_COOL, sat, v*0.92);
+}
+
+function pulso(xl) {
+  return {
+    familia: "Barriecito",
+    dibujar(c, L, t) {
+      const r = L/2;
+      const rOrbe = xl
+        ? r * Math.min(34, Math.max(6, 9 + (PPM - 60)*0.20)) / 227
+        : r * 11 / 227;
+      // La fase sale DIRECTAMENTE de la hora. En el reloj se acumulaba
+      // fotograma a fotograma y al despertar la pantalla los orbes salían
+      // disparados unos segundos.
+      const latidos = t * PPM / 60;
+      const ciclo = Math.floor(latidos / CYCLE_BEATS);
+      const p = latidos - ciclo * CYCLE_BEATS;
+      const s = ciclo % 2 === 0 ? 1 : -1;
+      const inicio = ciclo % 2 === 0 ? 0 : 180;
+
+      if (p < TRAVEL_BEATS) {                       // el viaje, por DETRÁS
+        const avance = DEG_PER_BEAT * p, frac = p / TRAVEL_BEATS;
+        const largo = Math.min(DEG_PER_BEAT * (PPM/60) * TRAIL_SECS, avance);
+        for (let i = TRAIL_DOTS; i >= 1; i--) {
+          const f = i / TRAIL_DOTS, atras = largo * f;
+          const rr = rOrbe * (0.30 + 0.55*(1-f)), dim = 0.25 + 0.55*(1-f);
+          const tk = frac - atras/180;
+          let [x, y] = enOrbita(L, inicio + s*(avance - atras));
+          circ(c, x, y, rr, colorOrbe(tk, true, dim));
+          [x, y] = enOrbita(L, inicio - s*(avance - atras));
+          circ(c, x, y, rr, colorOrbe(tk, false, dim));
+        }
+        for (const [k, v] of [[1.9,0.25],[1.4,0.60],[1.0,1.0]]) {
+          let [x, y] = enOrbita(L, inicio + s*avance);
+          circ(c, x, y, rOrbe*k, colorOrbe(frac, true, v));
+          [x, y] = enOrbita(L, inicio - s*avance);
+          circ(c, x, y, rOrbe*k, colorOrbe(frac, false, v));
+        }
+      }
+
+      basePulso.dibujar(c, L, t);
+
+      if (p >= TRAVEL_BEATS) {                      // el choque, por DELANTE
+        const grande = r * Math.min(250, Math.max(18, 45 + (PPM-60)*1.55)) / 227;
+        const m = (p - TRAVEL_BEATS) / MERGE_BEATS;
+        let radio, fade;
+        if (m < 0.28) { radio = rOrbe + (grande - rOrbe)*(m/0.28); fade = 1; }
+        else { const q = (m - 0.28)/0.72; radio = grande*Math.pow(1-q, 1.6); fade = 1 - 0.5*q; }
+        const [x, y] = enOrbita(L, inicio + 180);
+        for (let i = 0; i < ANILLOS; i++) {
+          const rr = radio * (1 - i/ANILLOS);
+          if (rr < 1) continue;
+          const f = i / (ANILLOS - 1);
+          circ(c, x, y, rr, f < 0.5
+            ? hsv(H_COOL + (H_WARM - H_COOL)*(f/0.5), 1, fade)
+            : hsv(H_WARM, 1 - (f - 0.5)/0.5, fade));
+        }
+      }
+    }
+  };
+}
+
+/* =====================================================================
+   rosa — ocho puntas, anillo de minutos y arco de progreso
+   ===================================================================== */
+function rosa(vivid) {
+  return {
+    familia: "Barriecito",
+    dibujar(c, L, t) {
+      const r = L/2, k = L/EPIX;
+      const rR = r - 24*k, rIn = rR*0.085, K_HOMBRO = 0.9;
+
+      // Los flancos se separan una FRACCIÓN del radio interior, no un
+      // ángulo. En el reloj iban a 4,6° medidos desde el centro, que a la
+      // altura del hombro son el 8% de rIn: la punta salía de dos píxeles y
+      // la rosa se leía como un alambre.
+      for (let i = 0; i < 8; i++) {
+        const cardinal = i % 2 === 0;
+        const largo = rR * (cardinal ? 0.90 : 0.72);
+        const a = i * 45 * Math.PI / 180;
+        const ux = Math.sin(a), uy = -Math.cos(a), px = Math.cos(a), py = Math.sin(a);
+        const hw = rIn * K_HOMBRO;
+        let col = vivid ? (cardinal ? "#00FF00" : "#FF0000")
+                        : (cardinal ? "#132A20" : "#0F2028");
+        if (!vivid && i === 0) col = "#3FD98C";
+        poly(c, [
+          [r + ux*largo, r + uy*largo],
+          [r + ux*rIn + px*hw, r + uy*rIn + py*hw],
+          [r - ux*rIn, r - uy*rIn],
+          [r + ux*rIn - px*hw, r + uy*rIn - py*hw],
+        ], col);
+      }
+
+      c.strokeStyle = vivid ? "#005B00" : "#1B3A2C";
+      c.lineWidth = 2*k;
+      for (const f of [0.66, 0.32]) {
+        c.beginPath(); c.arc(r, r, rR*f, 0, Math.PI*2); c.stroke();
+      }
+
+      c.font = `${34*k}px "Roboto Mono", monospace`;
+      c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillStyle = vivid ? "#1E9BFF" : "#4C9BF0";
+      ["N","E","S","O"].forEach((etq, j) => {
+        const ak = j * 90 * Math.PI / 180;
+        c.fillText(etq, r + (rR - 24*k)*Math.sin(ak), r - (rR - 24*k)*Math.cos(ak));
+      });
+
+      const rOut = r - 14*k;
+      for (let i = 0; i < 60; i++) {
+        const mayor = i % 5 === 0;
+        const largo = (mayor ? 15 : 9) * k;
+        const a = (i*6 - 90) * Math.PI/180, ca = Math.cos(a), sa = Math.sin(a);
+        c.strokeStyle = mayor ? "#5A5D66" : "#2C2E33";
+        c.lineWidth = (mayor ? 3 : 2) * k;
+        c.beginPath();
+        c.moveTo(r + (rOut-largo)*ca, r + (rOut-largo)*sa);
+        c.lineTo(r + rOut*ca, r + rOut*sa);
+        c.stroke();
+      }
+
+      const minuto = Math.floor(t/60) % 60, rA = r - 6*k;
+      c.lineWidth = 5*k;
+      c.strokeStyle = "#1A1C20";
+      c.beginPath(); c.arc(r, r, rA, 0, Math.PI*2); c.stroke();
+      if (minuto > 0) {
+        c.strokeStyle = vivid ? "#00FF00" : "#3FD98C";
+        c.beginPath();
+        c.arc(r, r, rA, -Math.PI/2, -Math.PI/2 + Math.PI*2*minuto/60);
+        c.stroke();
+      }
+
+      const hh = String((Math.floor(t/3600) % 12) || 12);
+      const mm = String(minuto).padStart(2, "0");
+      c.font = `${170*k}px "Barriecito"`;
+      c.fillStyle = "#F5F5F2";
+      const wH = c.measureText(hh).width, cs = c.measureText(":").width/2;
+      let x = r - (wH + cs*2 + c.measureText(mm).width)/2;
+      c.textAlign = "left"; c.fillText(hh, x, r - 16*k);
+      c.textAlign = "center"; c.fillText(":", x + wH + cs, r - 16*k);
+      c.textAlign = "left"; c.fillText(mm, x + wH + cs*2, r - 16*k);
+
+      const d = new Date();
+      c.font = `${30*k}px "Roboto Mono", monospace`;
+      c.textAlign = "center";
+      c.fillText(`${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`,
+                 r, r + 112*k);
+    }
+  };
+}
+
+/* ===================================================================== */
+const ESFERAS = {
+  bangers: digital("bangers"), barriecito: digital("barriecito"),
+  caesar: digital("caesar"), disco, honk: digital("honk"),
+  letras, londrina: digital("londrina"), orbita,
+  pulso: pulso(false), pulsoxl: pulso(true),
+  rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
+  smokum: digital("smokum"), sueellen: digital("sueellen"),
+};
+const NOMBRES = Object.keys(ESFERAS);
+
+/* ---------- estado ---------- */
+let indice = NOMBRES.indexOf("disco");
+let cuantas = 4;
+let enVivo = true;
+let horaFija = 36578;
+
+const rejilla = document.getElementById("rejilla");
+const chips = document.getElementById("chips");
+let celdas = [];
+
+function segundosAhora() {
+  const d = new Date();
+  return d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds() + d.getMilliseconds()/1000;
+}
+
+function hhmmss(s) {
+  s = Math.floor(s);
+  return [s/3600|0, (s/60|0)%60, s%60].map(n => String(n).padStart(2,"0")).join(":");
+}
+
+function visibles() {
+  if (cuantas === 1) return [NOMBRES[indice]];
+  // Empieza por la elegida y sigue el catálogo: así comparar es girar la lista.
+  return Array.from({length: cuantas}, (_, i) => NOMBRES[(indice + i) % NOMBRES.length]);
+}
+
+function montar() {
+  const cols = cuantas === 1 ? 1 : cuantas === 4 ? 2 : cuantas === 9 ? 3 : 5;
+  rejilla.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  rejilla.style.maxWidth = cuantas === 1 ? "min(88vh, 100%)" : "none";
+  rejilla.innerHTML = "";
+  celdas = visibles().map(nombre => {
+    const d = document.createElement("div");
+    d.className = "celda";
+    const cv = document.createElement("canvas");
+    const et = document.createElement("span");
+    et.className = "nombre";
+    et.textContent = nombre;
+    d.append(cv, et);
+    rejilla.append(d);
+    return { nombre, cv, ctx: cv.getContext("2d"), lado: 0 };
+  });
+  document.querySelectorAll("#chips .chip").forEach(ch =>
+    ch.setAttribute("aria-pressed", String(ch.dataset.n === NOMBRES[indice])));
+  document.querySelectorAll(".mandos [data-n]").forEach(b =>
+    b.setAttribute("aria-pressed", String(+b.dataset.n === cuantas)));
+}
+
+NOMBRES.forEach(n => {
+  const b = document.createElement("button");
+  b.className = "chip";
+  b.dataset.n = n;
+  b.textContent = n;
+  b.onclick = () => { indice = NOMBRES.indexOf(n); montar(); };
+  chips.append(b);
+});
+
+document.querySelectorAll(".mandos [data-n]").forEach(b =>
+  b.onclick = () => { cuantas = +b.dataset.n; montar(); });
+
+const elVivo = document.getElementById("vivo");
+const elReloj = document.getElementById("reloj");
+const elHora = document.getElementById("horaTxt");
+const elPpm = document.getElementById("ppm");
+const elPpmTxt = document.getElementById("ppmTxt");
+
+elVivo.onclick = () => {
+  enVivo = !enVivo;
+  elVivo.setAttribute("aria-pressed", String(enVivo));
+  elVivo.textContent = enVivo ? "en vivo" : "parada";
+  if (!enVivo) { horaFija = +elReloj.value; }
+};
+elReloj.oninput = () => {
+  horaFija = +elReloj.value;
+  if (enVivo) { enVivo = false; elVivo.setAttribute("aria-pressed","false");
+                elVivo.textContent = "parada"; }
+};
+elPpm.oninput = () => { PPM = +elPpm.value; elPpmTxt.textContent = PPM + " ppm"; };
+
+document.getElementById("pantalla").onclick = pantallaCompleta;
+
+function pantallaCompleta() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.();
+}
+document.addEventListener("fullscreenchange", () => {
+  document.body.classList.toggle("limpio", !!document.fullscreenElement);
+});
+
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if (k === "arrowright" || k === "arrowdown") { indice = (indice+1) % NOMBRES.length; montar(); }
+  else if (k === "arrowleft" || k === "arrowup") { indice = (indice+NOMBRES.length-1) % NOMBRES.length; montar(); }
+  else if (k === "1") { cuantas = 1; montar(); }
+  else if (k === "2") { cuantas = 4; montar(); }
+  else if (k === "3") { cuantas = 9; montar(); }
+  else if (k === "0") { cuantas = 15; montar(); }
+  else if (k === "f") pantallaCompleta();
+  else if (k === "h") document.body.classList.toggle("limpio");
+  else return;
+  e.preventDefault();
+});
+
+/* ---------- bucle ---------- */
+function pintar() {
+  const t = enVivo ? segundosAhora() : horaFija;
+  if (enVivo) elReloj.value = Math.floor(t);
+  elHora.textContent = hhmmss(t);
+
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  for (const c of celdas) {
+    const w = c.cv.clientWidth;
+    if (!w) continue;
+    if (c.lado !== w) {
+      c.lado = w;
+      c.cv.width = c.cv.height = Math.round(w * dpr);
+    }
+    const ctx = c.ctx;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, w);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, w);
+    ESFERAS[c.nombre].dibujar(ctx, w, t);
+  }
+  requestAnimationFrame(pintar);
+}
+
+montar();
+elPpmTxt.textContent = PPM + " ppm";
+// Medir texto antes de que lleguen las tipografías da anchos de la fuente de
+// respaldo y la hora sale descentrada. Se pinta igual desde ya y se remonta
+// cuando estén, para que la página no arranque en blanco.
+document.fonts.ready.then(montar);
+requestAnimationFrame(pintar);
+</script>
