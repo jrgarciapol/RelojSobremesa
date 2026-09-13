@@ -5,17 +5,18 @@ instante está donde se cruzan los dos aros, y hay que saberlo para leerlo. Aqu�
 la superficie lleva encima una banda impresa con las doce horas, así que el aro
 de la hora **señala un número** en vez de una posición que hay que estimar.
 
-La banda va en el **ecuador de fuera**, y no es una elección estética. La
-curvatura de Gauss de un toro es `cos(v) / (r · (R + r·cos v))`: máxima
-justo ahí, en `v = 0`, y negativa por dentro del agujero. Es la zona donde una
-tipografía pegada se dobla más y donde mejor se ve que está pegada.
+Dónde va la banda no es una elección estética. La curvatura de Gauss de un toro
+es `cos(v) / (r · (R + r·cos v))`: máxima en el ecuador de fuera, `v = 0`, y
+negativa por dentro del agujero. Ahí es donde una tipografía pegada se dobla
+más y donde mejor se ve que está pegada — pero ahí tampoco se ve, y por eso
+acaba un poco más arriba. La cuenta está en `V0, V1`.
 
 `toro` se queda como está: esto es una esfera aparte.
 """
 
 from ..banda import de_lejos_a_cerca, etiqueta, malla_toro, tinte_niebla
-from ..esfera import Malla
 from ..camara import Camara
+from ..esfera import Malla
 from ..lienzo import Lienzo
 from .toro import CAMARA, FOCO, R_DONUT, R_TUBO, Toro
 
@@ -34,7 +35,7 @@ NU, NV = 128, 8
 
 
 class Rosca(Toro):
-    """El toro con las doce horas impresas en el ecuador de fuera."""
+    """El toro con las doce horas impresas alrededor del tubo."""
 
     NOMBRE = "rosca"
 
