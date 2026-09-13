@@ -17,12 +17,10 @@ Lo que se gana no es solo tipografía. Sobre la superficie se puede pegar
 cualquier imagen.
 """
 
-import math
-
 import numpy as np
 
+from ..banda import etiqueta, tinte_niebla
 from ..esfera import Malla
-from ..lienzo import Lienzo, tipo
 from .superficie import Superficie
 
 # La banda, desenrollada. Ancha porque da la vuelta entera al día.
@@ -39,10 +37,6 @@ TEX_ALTO = 288
 V0, V1 = 0.175, 0.470
 NU, NV = 192, 6           # cuadros de la malla: a lo largo y a lo ancho
 
-HUESO = 0xF3E7D3
-AMBAR = 0xFFB020
-RAYA = 0x4A5A6E
-
 
 class Pintada(Superficie):
     """La superficie con una banda impresa enrollada encima."""
@@ -55,31 +49,7 @@ class Pintada(Superficie):
 
     # ---------- la banda, rasterizada una vez ----------
     def texturas(self):
-        lz = Lienzo(TEX_ANCHO, TEX_ALTO, sup=1)
-        f_hora = tipo("Barriecito-Regular.ttf", TEX_ALTO * 0.62)
-        f_pie = tipo("RobotoMono-Bold.ttf", TEX_ALTO * 0.11)
-
-        # Dos rayas de guía, arriba y abajo, para que se vea que la banda está
-        # impresa y enrollada y no flotando.
-        for y in (TEX_ALTO * 0.10, TEX_ALTO * 0.90):
-            lz.linea(0, y, TEX_ANCHO, y, TEX_ALTO * 0.012, RAYA)
-
-        for k in range(60):
-            x = TEX_ANCHO * k / 60.0
-            largo = TEX_ALTO * (0.11 if k % 5 else 0.20)
-            lz.linea(x, TEX_ALTO * 0.90, x, TEX_ALTO * 0.90 - largo,
-                     TEX_ALTO * (0.010 if k % 5 else 0.020),
-                     RAYA if k % 5 else AMBAR)
-
-        # Las doce horas. La de las 12 cae en la costura, así que se pinta a
-        # los dos lados: si no, al enrollar la banda saldría medio número.
-        for h in range(1, 13):
-            x = TEX_ANCHO * (h % 12) / 12.0
-            for dx in (-TEX_ANCHO, 0, TEX_ANCHO):
-                lz.texto(x + dx, TEX_ALTO * 0.46, str(h), f_hora, HUESO)
-            lz.texto(x + TEX_ANCHO / 24.0, TEX_ALTO * 0.955,
-                     "%02d" % ((h % 12) * 5), f_pie, RAYA)
-        return {"banda": lz.array()}
+        return {"banda": etiqueta(TEX_ANCHO, TEX_ALTO)}
 
     # ---------- la malla sobre la que se enrolla ----------
     def _malla(self):
@@ -120,10 +90,8 @@ class Pintada(Superficie):
         xy, d = self.cam(self._pts)
         # La niebla se aplica modulando el color de cada vértice: la banda se
         # apaga por detrás igual que el resto de la superficie.
-        n = self.cam.niebla(d, 1.5, 1.9)
-        col = np.clip((0.22 + 0.78 * n)[:, None] * 255, 0, 255).astype(np.uint8)
-        col = np.repeat(col, 3, axis=1)
-        return (Malla("banda", xy, self._uv, self._idx, col, 255),)
+        return (Malla("banda", xy, self._uv, self._idx,
+                      tinte_niebla(self.cam, d), 255),)
 
 
 ESFERA = Pintada

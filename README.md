@@ -45,8 +45,8 @@ python -m reloj --velocidad 600          # una hora de reloj cada 6 segundos
 ```
 
 `--velocidad` no es un juguete: la familia de `eliptica` da una vuelta por
-**hora**, la cámara de `toro` y `hopf` tarda cinco minutos y `paseo` cambia de
-curva cada minuto, así que a velocidad real no hay forma de juzgar si el
+**hora**, la cámara de las esferas 3D tarda entre cuatro y cinco minutos en dar
+la vuelta y `paseo` cambia de curva cada minuto, así que a velocidad real no hay forma de juzgar si el
 movimiento funciona. En la página hay los mismos multiplicadores en botones, y
 en `reloj.bat` es la opción 5.
 
@@ -111,7 +111,7 @@ El banco de medida es `python3 utiles/medir.py 1080`.
 
 ## Verlas sin la Raspberry: `reloj.html`
 
-Una reimplementación en Canvas de las veintitrés, en una página suelta. Doble
+Una reimplementación en Canvas de las veinticinco, en una página suelta. Doble
 clic y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o todas a la vez,
 pantalla completa, un cursor para recorrer el día y otro para las pulsaciones.
 
@@ -395,10 +395,17 @@ La banda va en la **pared exterior de abajo**, no en el ala del borde. La
 cámara mira desde arriba, así que del ala se ve la cara de dentro: la primera
 versión salía impresa por detrás, del revés y en espejo.
 
+La banda va a la **cintura del toroide**, no al borde de abajo: ahí la pared es
+casi recta y la banda se lee plana, y subida a donde la superficie más se curva
+la tipografía se dobla y se ve que está pegada a algo.
+
 En el navegador cuesta más, porque **Canvas 2D no sabe dibujar un triángulo con
 textura**: hay que recortar cada uno y aplicarle la afín a mano. Por eso su
-malla es más basta —72 × 3 cuadros en vez de 192 × 6— y es la única diferencia
-real entre las dos versiones.
+malla es más basta —96 × 4 cuadros en vez de 192 × 6— y por eso ahí las tres
+esferas con banda tienen **dos mallas y eligen por el tamaño del dial**: en una
+celda de cien píxeles de la rejilla de veinticinco, cuatrocientos cuadros se
+gastan en detalle que no cabe. Es la única diferencia real entre las dos
+versiones.
 
 **`hopf`** — un reloj de eslabones.
 
@@ -440,6 +447,47 @@ lee como superficie y no como alambre. Cuesta lo mismo.
 
 No hay z-buffer: la profundidad la dice la **niebla**, y basta. El ojo lee una
 malla que se apaga al fondo como una superficie curva.
+
+**`rosca`** — el mismo toro, con las horas impresas alrededor.
+
+`toro` es la única esfera de geometría **sin números**: el instante está donde
+se cruzan los dos aros, y hay que saberlo para leerlo. Aquí la superficie lleva
+la banda impresa de `pintada`, así que el aro de la hora **señala un número**.
+
+La banda va en el **hombro del tubo**, y la razón es medible. La curvatura de
+Gauss de un toro es `cos(v) / (r·(R + r·cos v))`: máxima en el ecuador de
+fuera, que sería el sitio — pero con el ojo a 35 grados el ecuador cae en el
+borde de abajo del contorno y de la banda se veía un cuarto escaso. En el
+hombro la curvatura sigue siendo el 80% de la máxima y se ve casi entera, así
+que el ojo también sube.
+
+Y aquí hizo falta algo que en `pintada` no: **quitar las caras que dan la
+espalda**. Una pared abierta se ve por un lado y el orden da igual; un toro es
+cerrado, y por detrás enseña su cara interior — la primera versión tenía un `8`
+del revés flotando sobre el agujero. Se detecta sin normales: si el cuadro está
+de espaldas, sus vértices salen girados al revés en pantalla. Los que quedan se
+pintan **de lejos a cerca**, que con quinientos cuadros es un `argsort`.
+
+**`enlazada`** — Hopf con las horas impresas **sobre** las fibras.
+
+`hopf` no tiene superficie: son círculos en el aire, y una etiqueta necesita
+algo donde pegarse. Pero la superficie está y no hay que inventarla — **las
+fibras sobre un paralelo barren un toro de revolución**, con `R = sec(t/2)` y
+`r = tan(t/2)`. No aproximadamente: comprobado a precisión de máquina para los
+tres paralelos que dibuja `hopf`.
+
+Lo bonito sale de regalo. Una circunferencia sobre un toro que no es ni
+meridiano ni paralelo es una **circunferencia de Villarceau**, el corte por un
+plano bitangente, y las fibras de Hopf sobre un paralelo son exactamente eso.
+Así que las cifras no están delante ni detrás de las fibras: están en la misma
+superficie, y las fibras pasan por encima como los hilos de un bordado.
+
+Y la fibra de la hora se muda a ese toro, y entonces **señala**. Es una curva
+`(1, 1)` —mientras da una vuelta al donut da otra al tubo— así que pasa por la
+altura a la que están impresas las cifras **exactamente una vez**. La fibra
+sobre `(t, f)` es la de `(t, 0)` girada `f` alrededor del eje, así que basta
+restar el desfase de esa altura y la hora toca su número: medido, nueve
+milésimas de grado de error sobre las doce.
 
 **`finita`** — la misma curva sobre `F_p`, recorrida por su ley de grupo:
 `P, 2P, 3P…` uniendo saltos consecutivos con una cuerda. El primo lo pone la

@@ -58,6 +58,10 @@ class Toro(Esfera):
     # recálculos por segundo eso son pasos de 0,19 grados, imperceptibles, y el
     # coste medio baja a 1 ms (unos 10 en la Pi, un tercio del fotograma).
     POR_SEGUNDO = 8
+    # El cabeceo, como atributos para que una subclase pueda subir el ojo sin
+    # copiar `_calcular` entera.
+    CAB_BASE = 0.62
+    CAB_VAIVEN = 0.22
 
     def __init__(self, lado):
         Esfera.__init__(self, lado)
@@ -107,7 +111,8 @@ class Toro(Esfera):
 
     def _calcular(self, t):
         self.cam.mirar(2 * math.pi * (t / VUELTA),
-                       0.62 + 0.22 * math.sin(2 * math.pi * t / CABECEO))
+                       self.CAB_BASE + self.CAB_VAIVEN
+                       * math.sin(2 * math.pi * t / CABECEO))
         g = self.lado / 454.0
         fuera = []
 

@@ -166,9 +166,9 @@ main { overflow: hidden; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las veintitrés de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin, siete de geometría y una de curvas célebres ·
-    abre por la última, <b>paseo</b></span>
+  <span class="sub">Las veinticinco de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin, nueve de geometría y una de curvas célebres ·
+    abre por la última, <b>rosca</b></span>
 </header>
 
 <div class="mandos">
@@ -177,7 +177,7 @@ main { overflow: hidden; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="23">todas</button>
+    <button id="g15" data-n="25">todas</button>
   </div>
 
   <div class="grupo">
@@ -835,23 +835,27 @@ const TEJIDO = (() => {
   return out;
 })();
 
-const toro = {
+function hazToro(cfg) {
+ return {
   familia: "Roboto Mono",
+  tex: null,
   dibujar(c, L, t) {
-    const r = L/2, g = L/454;
+    const r = L/2, g = L/454, zoom = cfg.zoom;
     const giro = 2*Math.PI * (t / VUELTA);
-    const nada = 0.62 + 0.22 * Math.sin(2*Math.PI * t / CABECEO);
+    const nada = cfg.cab + cfg.vaiven * Math.sin(2*Math.PI * t / CABECEO);
     const ca = Math.cos(giro), sa = Math.sin(giro);
     const cb = Math.cos(nada), sb = Math.sin(nada);
 
+    const proyXYZ = ([X, Y, Z]) => {
+      const x1 = X*ca - Y*sa, y1 = X*sa + Y*ca;
+      const y2 = y1*cb - Z*sb, z2 = y1*sb + Z*cb;
+      const d = y2 + CAMARA, k = FOCO / Math.max(d, 0.35) * zoom * r;
+      return [r + x1*k, r - z2*k, d];
+    };
     // (u,v) -> pantalla, devolviendo también la profundidad para la niebla.
     const proy = (u, v) => {
       const an = R_DONUT + R_TUBO*Math.cos(v);
-      const X = an*Math.cos(u), Y = an*Math.sin(u), Z = R_TUBO*Math.sin(v);
-      const x1 = X*ca - Y*sa, y1 = X*sa + Y*ca;
-      const y2 = y1*cb - Z*sb, z2 = y1*sb + Z*cb;
-      const d = y2 + CAMARA, k = FOCO / Math.max(d, 0.35) * ZOOM * r;
-      return [r + x1*k, r - z2*k, d];
+      return proyXYZ([an*Math.cos(u), an*Math.sin(u), R_TUBO*Math.sin(v)]);
     };
 
     c.lineCap = "round"; c.lineJoin = "round";
@@ -866,11 +870,20 @@ const toro = {
         if (prev) {
           const cerca = Math.pow(Math.min(Math.max((CAMARA + 1 - P[2])/2, 0), 1), 1.7);
           c.strokeStyle = hsv(0.53 + 0.20*(Math.cos(v)*0.5 + 0.5), 0.62,
-                              0.66 * (0.10 + 0.90*cerca));
+                              cfg.tejido * (0.10 + 0.90*cerca));
           c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(P[0], P[1]); c.stroke();
         }
         prev = P;
       }
+    }
+
+    // La banda impresa, si esta variante la lleva.
+    if (cfg.banda) {
+      if (!this.tex) this.tex = etiqueta(RO_TEX_W, RO_TEX_H);
+      const M = L >= FINA ? MALLA_RO : MALLA_RO_LEJOS;
+      pintarBanda(c, this.tex, M.pts.map(proyXYZ), M.uv, M.cuadros,
+                  d => 0.42 + 0.58 * Math.pow(
+                    Math.min(Math.max((CAMARA + 2.4 - d)/4.8, 0), 1), 1.2));
     }
 
     // Los dos aros. El de la HORA rodea el tubo y su posición alrededor del
@@ -908,9 +921,38 @@ const toro = {
                L/2, L*0.885);
     c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
     c.fillStyle = "#6E86A0";
-    c.fillText("C / (Z + τZ)   con   τ = e^(iπ/3)", L/2, L*0.945);
+    c.fillText(cfg.pie, L/2, L*0.945);
   }
-};
+ };
+}
+const toro = hazToro({ tejido: 0.66, cab: 0.62, vaiven: 0.22, zoom: ZOOM,
+                       banda: false, pie: "C / (Z + τZ)   con   τ = e^(iπ/3)" });
+
+/* =====================================================================
+   rosca — el mismo toro, con las horas impresas alrededor.
+
+   `toro` es la única esfera de geometría sin números: el instante está
+   donde se cruzan los dos aros y hay que saberlo para leerlo. Aquí la
+   superficie lleva una banda impresa, así que el aro de la hora SEÑALA
+   un número.
+
+   La banda va en el HOMBRO del tubo. La curvatura de Gauss de un toro es
+   cos(v)/(r·(R + r·cos v)), máxima en el ecuador de fuera — pero con el
+   ojo bajo el ecuador cae en el borde del contorno y se veía un cuarto
+   escaso de la banda. En el hombro la curvatura sigue siendo el 80% de la
+   máxima y se ve casi entera, así que el ojo también sube.
+   ===================================================================== */
+const RO_TEX_W = 2048, RO_TEX_H = 136;
+const RO_V0 = 0.0, RO_V1 = 1.30;
+// Más basta que la de Python (128 x 8): aquí cada triángulo se recorta y se
+// transforma a mano, así que los cuadros se pagan de uno en uno.
+const MALLA_RO = mallaToro(R_DONUT, R_TUBO, RO_V0, RO_V1, 64, 3,
+                           RO_TEX_W, RO_TEX_H);
+const MALLA_RO_LEJOS = mallaToro(R_DONUT, R_TUBO, RO_V0, RO_V1, 30, 2,
+                                 RO_TEX_W, RO_TEX_H);
+const rosca = hazToro({ tejido: 0.34, cab: 1.05, vaiven: 0.20, zoom: 0.58,
+                        banda: true,
+                        pie: "las horas, impresas donde el toro más se curva" });
 
 
 /* =====================================================================
@@ -946,12 +988,14 @@ const FONDO_H = PARALELOS.flatMap(t =>
   Array.from({length: POR_PARALELO}, (_, k) =>
     [t, fibra(t, 2*Math.PI*k/POR_PARALELO, HPUNTOS)]));
 
-const hopf = {
+function hazHopf(cfg) {
+ return {
   familia: "Roboto Mono",
+  tex: null,
   dibujar(c, L, t) {
     const r = L/2, g = L/454;
     const giro = 2*Math.PI * t / H_VUELTA;
-    const cab = 0.42 + 0.26 * Math.sin(2*Math.PI * t / H_CABECEO);
+    const cab = cfg.cab + cfg.vaiven * Math.sin(2*Math.PI * t / H_CABECEO);
     const ca = Math.cos(giro), sa = Math.sin(giro);
     const cb = Math.cos(cab), sb = Math.sin(cab);
 
@@ -966,8 +1010,18 @@ const hopf = {
 
     c.lineCap = "round"; c.lineJoin = "round";
 
+    // La banda impresa va DEBAJO de las fibras: son circunferencias trazadas
+    // sobre ella, no delante.
+    if (cfg.banda) {
+      if (!this.tex) this.tex = etiqueta(EN_TEX_W, EN_TEX_H);
+      const M = L >= FINA ? MALLA_EN : MALLA_EN_LEJOS;
+      pintarBanda(c, this.tex, M.pts.map(proy), M.uv, M.cuadros,
+                  d => 0.42 + 0.58 * Math.pow(
+                    Math.min(Math.max((H_CAM + 2.6 - d)/5.2, 0), 1), 1.2));
+    }
+
     c.lineWidth = 1.4 * g; c.globalAlpha = 0.59;
-    for (const [lat, pts] of FONDO_H) {
+    for (const [lat, pts] of cfg.fondo) {
       let prev = null;
       for (const p of pts) {
         const P = proy(p);
@@ -981,9 +1035,7 @@ const hopf = {
     c.globalAlpha = 1;
 
     // Los dos eslabones: enlazados por construcción, número de enlace 1.
-    const hora = 2*Math.PI * (t/3600 % 12)/12;
-    const minuto = 2*Math.PI * (t/60 % 60)/60;
-    for (const [lat, ang, tono] of [[T_HORA, hora, 0.09], [T_MINUTO, minuto, 0.47]]) {
+    for (const [lat, ang, tono] of cfg.eslabones(t)) {
       const pts = fibra(lat, ang, 200);
       for (const [ancho, alfa] of [[6.0, 0.24], [2.3, 1.0]]) {
         c.lineWidth = ancho * g; c.globalAlpha = alfa;
@@ -1007,9 +1059,65 @@ const hopf = {
                L/2, L*0.885);
     c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
     c.fillStyle = "#6E86A0";
-    c.fillText("S³ → S²   ·   dos fibras, un enlace", L/2, L*0.945);
+    c.fillText(cfg.pie, L/2, L*0.945);
   }
-};
+ };
+}
+const hopf = hazHopf({
+  cab: 0.42, vaiven: 0.26, banda: false, fondo: FONDO_H,
+  eslabones: t => [[T_HORA, 2*Math.PI * (t/3600 % 12)/12, 0.09],
+                   [T_MINUTO, 2*Math.PI * (t/60 % 60)/60, 0.47]],
+  pie: "S³ → S²   ·   dos fibras, un enlace",
+});
+
+/* =====================================================================
+   enlazada — Hopf con las horas impresas SOBRE las fibras.
+
+   `hopf` no tiene superficie: son círculos en el aire, y una etiqueta
+   necesita algo donde pegarse. Pero la superficie está, y no hay que
+   inventarla: las fibras sobre un paralelo de S² barren un toro de
+   revolución, con R = sec(t/2) y r = tan(t/2). No aproximadamente —
+   comprobado a precisión de máquina para los tres paralelos.
+
+   Y de regalo: una circunferencia sobre un toro que no es ni meridiano ni
+   paralelo es una circunferencia de VILLARCEAU, el corte por un plano
+   bitangente. Las fibras de Hopf sobre un paralelo son exactamente eso,
+   así que las cifras no están delante ni detrás de las fibras: están en la
+   misma superficie, y las fibras pasan por encima como hilos de un bordado.
+
+   Además la fibra de la hora se muda a ese toro, y entonces SEÑALA. Es una
+   curva (1,1): mientras da una vuelta al donut da otra al tubo, así que
+   pasa por la altura de las cifras exactamente una vez. Restando el desfase
+   que le corresponde a esa altura, la hora toca su número — comprobado, con
+   un error de nueve milésimas de grado sobre las doce.
+   ===================================================================== */
+const EN_T = 0.82;                                  // el paralelo de en medio
+const EN_R = 1/Math.cos(EN_T/2), EN_TUBO = Math.tan(EN_T/2);
+const EN_TEX_W = 2048, EN_TEX_H = 148;
+const EN_V0 = 0.0, EN_V1 = 1.30;
+const EN_V_CIFRAS = EN_V0 + (EN_V1 - EN_V0) * (1 - 0.46);
+const MALLA_EN = mallaToro(EN_R, EN_TUBO, EN_V0, EN_V1, 64, 3,
+                           EN_TEX_W, EN_TEX_H);
+const MALLA_EN_LEJOS = mallaToro(EN_R, EN_TUBO, EN_V0, EN_V1, 30, 2,
+                                 EN_TEX_W, EN_TEX_H);
+
+// En qué azimut cruza la altura v del tubo la fibra sobre (t, 0). Con v = 0
+// da pi/2, que es el cruce por el ecuador de fuera.
+const EN_DESFASE = (() => {
+  const a = Math.cos(EN_T/2), b = Math.sin(EN_T/2);
+  const k = 1 + b*Math.cos(EN_V_CIFRAS);
+  return Math.atan2((1 - a*a/k)/b, a*Math.sin(EN_V_CIFRAS)/k);
+})();
+
+const enlazada = hazHopf({
+  cab: 0.95, vaiven: 0.20, banda: true,
+  // Solo las fibras del paralelo de la banda: son las que la bordan. Las de
+  // los otros dos cruzaban las cifras desde fuera y parecían arañazos.
+  fondo: FONDO_H.filter(([lat]) => lat === EN_T),
+  eslabones: t => [[EN_T, 2*Math.PI * (t/3600 % 12)/12 - EN_DESFASE, 0.09],
+                   [T_MINUTO, 2*Math.PI * (t/60 % 60)/60, 0.47]],
+  pie: "las fibras de un paralelo son un toro",
+});
 
 
 /* =====================================================================
@@ -1247,36 +1355,93 @@ const P_TEX_W = 2048, P_TEX_H = 288;
 // seguir, así que la malla también sube de 72x3 a 96x4.
 const P_V0 = 0.175, P_V1 = 0.470, P_NU = 96, P_NV = 4;
 
-function bandaPintada() {
+// La etiqueta de doce horas, desenrollada. Tres esferas la usan —`pintada`,
+// `rosca` y `enlazada`— así que va parametrizada: todo en fracciones del alto,
+// y sirve igual para una banda cuadrada que para una muy ancha y baja.
+function etiqueta(W, H) {
   const cv = document.createElement("canvas");
-  cv.width = P_TEX_W; cv.height = P_TEX_H;
+  cv.width = W; cv.height = H;
   const c = cv.getContext("2d");
-  c.strokeStyle = "#4A5A6E"; c.lineWidth = P_TEX_H * 0.012;
-  for (const y of [P_TEX_H * 0.10, P_TEX_H * 0.90]) {
-    c.beginPath(); c.moveTo(0, y); c.lineTo(P_TEX_W, y); c.stroke();
+  c.strokeStyle = "#4A5A6E"; c.lineWidth = H * 0.012;
+  for (const y of [H * 0.10, H * 0.90]) {
+    c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
   }
   for (let k = 0; k < 60; k++) {
-    const x = P_TEX_W * k / 60, largo = P_TEX_H * (k % 5 ? 0.11 : 0.20);
+    const x = W * k / 60, largo = H * (k % 5 ? 0.11 : 0.20);
     c.strokeStyle = k % 5 ? "#4A5A6E" : "#FFB020";
-    c.lineWidth = P_TEX_H * (k % 5 ? 0.010 : 0.020);
-    c.beginPath(); c.moveTo(x, P_TEX_H * 0.90); c.lineTo(x, P_TEX_H * 0.90 - largo); c.stroke();
+    c.lineWidth = H * (k % 5 ? 0.010 : 0.020);
+    c.beginPath(); c.moveTo(x, H * 0.90); c.lineTo(x, H * 0.90 - largo); c.stroke();
   }
-  c.font = `${P_TEX_H * 0.62}px "Barriecito"`;
+  c.font = `${H * 0.62}px "Barriecito"`;
   c.textAlign = "center"; c.textBaseline = "middle";
   c.fillStyle = "#F3E7D3";
   // La hora 12 cae en la costura: se pinta a los dos lados o al enrollar la
   // banda saldría medio número.
   for (let h = 1; h <= 12; h++) {
-    const x = P_TEX_W * (h % 12) / 12;
-    for (const dx of [-P_TEX_W, 0, P_TEX_W]) c.fillText(String(h), x + dx, P_TEX_H * 0.46);
+    const x = W * (h % 12) / 12;
+    for (const dx of [-W, 0, W]) c.fillText(String(h), x + dx, H * 0.46);
   }
   return cv;
 }
 
-const MALLA_P = (() => {
+// Una rejilla de cuadros sobre un trozo de toro de revolución. `u` da la
+// vuelta al donut y es la hora; `v` rodea el tubo, con 0 en el ecuador de
+// fuera. Se construye una vez: no depende ni de la hora ni de la cámara.
+function mallaToro(R, r, v0, v1, nu, nv, W, H) {
+  const pts = [], uv = [], cuadros = [];
+  for (let i = 0; i <= nu; i++) {
+    const u = 2 * Math.PI * i / nu;
+    for (let j = 0; j <= nv; j++) {
+      const v = v0 + (v1 - v0) * j / nv, an = R + r * Math.cos(v);
+      pts.push([an * Math.cos(u), an * Math.sin(u), r * Math.sin(v)]);
+      // La v de la imagen va al revés que la del tubo: la banda se lee de
+      // arriba abajo y el tubo sube.
+      uv.push([(i / nu) * (W - 1), (1 - j / nv) * (H - 1)]);
+    }
+  }
+  for (let i = 0; i < nu; i++)
+    for (let j = 0; j < nv; j++) {
+      const a = i * (nv + 1) + j;
+      cuadros.push([a, a + nv + 1, a + 1, a + nv + 2]);
+    }
+  return { pts, uv, cuadros };
+}
+
+// Los cuadros que se ven, del fondo hacia delante.
+//
+// Un toro es CERRADO, y eso pide dos cosas que una pared abierta no. Fuera los
+// que dan la espalda: por detrás la superficie enseña su cara interior y la
+// etiqueta sale en espejo — se detecta por el signo del giro de sus vértices
+// en pantalla, sin normales. Y los que quedan, ordenados por profundidad: sin
+// z-buffer manda el orden de pintado.
+function bandaVisible(pv, cuadros) {
+  const out = [];
+  for (const q of cuadros) {
+    const A = pv[q[0]], B = pv[q[1]], C = pv[q[2]];
+    if ((B[0]-A[0])*(C[1]-A[1]) - (B[1]-A[1])*(C[0]-A[0]) >= 0) continue;
+    out.push([(A[2] + B[2] + C[2] + pv[q[3]][2]) / 4, q]);
+  }
+  out.sort((x, y) => y[0] - x[0]);
+  return out;
+}
+
+// Pinta una banda ya proyectada. `niebla` la apaga por detrás igual que la
+// superficie que la lleva.
+function pintarBanda(c, tex, pv, uv, cuadros, niebla) {
+  for (const [prof, q] of bandaVisible(pv, cuadros)) {
+    c.globalAlpha = niebla(prof);
+    triTextura(c, tex, [pv[q[0]], pv[q[1]], pv[q[2]]],
+               [uv[q[0]], uv[q[1]], uv[q[2]]]);
+    triTextura(c, tex, [pv[q[1]], pv[q[3]], pv[q[2]]],
+               [uv[q[1]], uv[q[3]], uv[q[2]]]);
+  }
+  c.globalAlpha = 1;
+}
+
+function mallaPintada(nu, nv) {
   const rej = [];
-  for (let i = 0; i <= P_NU; i++) {
-    const fase = (i % P_NU) / P_NU, az = 2 * Math.PI * fase;
+  for (let i = 0; i <= nu; i++) {
+    const fase = (i % nu) / nu, az = 2 * Math.PI * fase;
     const [a, b] = parametros(fase);
     const r = raices(a, b, 0);
     const alto = raices(a, b, YTOPE * YTOPE);
@@ -1284,17 +1449,26 @@ const MALLA_P = (() => {
     rej.push(lazo(a, b, r[r.length - 1], tope, N_RAMA).map(([x, y]) => enAnillo(az, x, y)));
   }
   const nV = rej[0].length, pts = [], uv = [];
-  for (let i = 0; i <= P_NU; i++) {
-    for (let j = 0; j <= P_NV; j++) {
-      const v = P_V0 + (P_V1 - P_V0) * j / P_NV;
+  for (let i = 0; i <= nu; i++) {
+    for (let j = 0; j <= nv; j++) {
+      const v = P_V0 + (P_V1 - P_V0) * j / nv;
       const bb = v * (nV - 1), j0 = Math.min(Math.floor(bb), nV - 2), f = bb - j0;
       const A = rej[i][j0], B = rej[i][j0 + 1];
       pts.push([A[0] + (B[0]-A[0])*f, A[1] + (B[1]-A[1])*f, A[2] + (B[2]-A[2])*f]);
-      uv.push([(i / P_NU) * (P_TEX_W - 1), (1 - j / P_NV) * (P_TEX_H - 1)]);
+      uv.push([(i / nu) * (P_TEX_W - 1), (1 - j / nv) * (P_TEX_H - 1)]);
     }
   }
-  return { pts, uv };
-})();
+  return { pts, uv, nu, nv };
+}
+
+// Dos mallas, y se elige por el tamaño del dial.
+//
+// Cada triángulo con textura cuesta un recorte y una transformación afín a
+// mano, así que la malla es lo que decide el precio de estas tres esferas. A
+// pantalla completa hace falta fina; en una celda de cien píxeles de la
+// rejilla de veinticinco, los 384 cuadros se gastan en detalle que no cabe.
+const MALLA_P = mallaPintada(96, 4), MALLA_P_LEJOS = mallaPintada(40, 2);
+const FINA = 300;      // píxeles de dial a partir de los cuales vale la pena
 
 // Un triángulo con textura, a mano: se recorta y se aplica la afín que lleva
 // las coordenadas de la imagen a las de pantalla. El recorte se agranda un
@@ -1328,7 +1502,7 @@ const pintada = {
   tex: null,
   dibujar(c, L, t) {
     baseSup.dibujar(c, L, t);
-    if (!this.tex) this.tex = bandaPintada();
+    if (!this.tex) this.tex = etiqueta(P_TEX_W, P_TEX_H);
 
     const r = L/2;
     const giro = 2*Math.PI * t / S_VUELTA;
@@ -1342,18 +1516,19 @@ const pintada = {
       return [r + x1*k, r - z2*k, d];
     };
 
-    const pv = MALLA_P.pts.map(proy);
-    for (let i = 0; i < P_NU; i++) {
-      for (let j = 0; j < P_NV; j++) {
-        const A = i*(P_NV+1)+j, B = A+(P_NV+1);
+    const M = L >= FINA ? MALLA_P : MALLA_P_LEJOS;
+    const pv = M.pts.map(proy);
+    for (let i = 0; i < M.nu; i++) {
+      for (let j = 0; j < M.nv; j++) {
+        const A = i*(M.nv+1)+j, B = A+(M.nv+1);
         // La niebla: la banda se apaga por detrás como el resto.
         const prof = (pv[A][2]+pv[B][2]+pv[A+1][2]+pv[B+1][2])/4;
         c.globalAlpha = 0.20 + 0.80 *
           Math.pow(Math.min(Math.max((S_CAM + 1.9 - prof)/3.8, 0), 1), 1.5);
         triTextura(c, this.tex, [pv[A], pv[B], pv[A+1]],
-                   [MALLA_P.uv[A], MALLA_P.uv[B], MALLA_P.uv[A+1]]);
+                   [M.uv[A], M.uv[B], M.uv[A+1]]);
         triTextura(c, this.tex, [pv[B], pv[B+1], pv[A+1]],
-                   [MALLA_P.uv[B], MALLA_P.uv[B+1], MALLA_P.uv[A+1]]);
+                   [M.uv[B], M.uv[B+1], M.uv[A+1]]);
       }
     }
     c.globalAlpha = 1;
@@ -1563,7 +1738,7 @@ const ESFERAS = {
   pulso: pulso(false), pulsoxl: pulso(true),
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
   smokum: digital("smokum"), sueellen: digital("sueellen"),
-  superficie, grabada, pintada, paseo, toro,
+  superficie, grabada, pintada, paseo, toro, rosca, enlazada,
 };
 const NOMBRES = Object.keys(ESFERAS);
 
@@ -1576,7 +1751,7 @@ const NOMBRES = Object.keys(ESFERAS);
 // Va por nombre y no como «la última de la lista», porque la lista está en
 // orden alfabético: `hopf` se coló en medio y la página seguía abriendo por
 // `toro`. Al añadir una esfera, cambiar esta línea.
-const NUEVA = "paseo";
+const NUEVA = "rosca";
 let indice = Math.max(0, NOMBRES.indexOf(NUEVA));
 let cuantas = 4;
 // Reloj virtual. La familia de `eliptica` da una vuelta por HORA y la cámara
@@ -1616,8 +1791,6 @@ function visibles() {
 // la cuarta esfera, no se están comparando cuatro esferas. El lado de la celda
 // sale del hueco que queda, no del ancho a secas.
 function ajustar() {
-  const cols = cuantas === 1 ? 1 : cuantas === 4 ? 2 : cuantas === 9 ? 3 : 6;
-  const filas = Math.ceil(cuantas / cols);
   const est = getComputedStyle(rejilla);
   const hueco = parseFloat(est.gap) || 0;
   // El hueco disponible es el que el navegador ya le ha dado a la rejilla
@@ -1625,13 +1798,25 @@ function ajustar() {
   // propios rellenos y separaciones. Calcularlo a mano a partir de la ventana
   // obliga a acordarse del pie, que va DESPUÉS, y de los dos rellenos; olvidar
   // uno solo recorta la última fila y la rejilla lo esconde con overflow.
-  const anchoLibre = rejilla.clientWidth - parseFloat(est.paddingLeft)
-                   - parseFloat(est.paddingRight) - hueco * (cols - 1);
-  const altoLibre = rejilla.clientHeight - parseFloat(est.paddingTop)
-                  - parseFloat(est.paddingBottom) - hueco * (filas - 1);
-  const lado = Math.max(90, Math.floor(Math.min(anchoLibre / cols,
-                                                altoLibre / filas)));
-  rejilla.style.gridTemplateColumns = `repeat(${cols}, ${lado}px)`;
+  const ancho = rejilla.clientWidth - parseFloat(est.paddingLeft)
+              - parseFloat(est.paddingRight);
+  const alto = rejilla.clientHeight - parseFloat(est.paddingTop)
+             - parseFloat(est.paddingBottom);
+  const cabe = (k) => {
+    const filas = Math.ceil(cuantas / k);
+    return Math.min((ancho - hueco*(k-1)) / k, (alto - hueco*(filas-1)) / filas);
+  };
+
+  // Las rejillas chicas van cuadradas a propósito; para «todas» se busca el
+  // reparto que hace las celdas MÁS GRANDES. Estaba fijo en seis columnas, así
+  // que cada esfera nueva acercaba la rejilla al borde y al pasar de
+  // veinticuatro pedía una quinta fila que ya no cabía: se salía por abajo.
+  let cols = {1: 1, 4: 2, 9: 3}[cuantas] || 1;
+  if (!{1: 1, 4: 1, 9: 1}[cuantas])
+    for (let k = 2; k <= cuantas; k++) if (cabe(k) > cabe(cols)) cols = k;
+
+  rejilla.style.gridTemplateColumns =
+    `repeat(${cols}, ${Math.max(60, Math.floor(cabe(cols)))}px)`;
 }
 
 function montar() {

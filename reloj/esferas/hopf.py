@@ -72,6 +72,10 @@ class Hopf(Esfera):
 
     NOMBRE = "hopf"
     POR_SEGUNDO = 8
+    # El cabeceo, como atributos para que una subclase pueda subir el ojo sin
+    # copiar `_calcular` entera.
+    CAB_BASE = 0.42
+    CAB_VAIVEN = 0.26
 
     def __init__(self, lado):
         Esfera.__init__(self, lado)
@@ -94,7 +98,8 @@ class Hopf(Esfera):
 
     def _calcular(self, t):
         self.cam.mirar(2 * math.pi * t / VUELTA,
-                       0.42 + 0.26 * math.sin(2 * math.pi * t / CABECEO))
+                       self.CAB_BASE + self.CAB_VAIVEN
+                       * math.sin(2 * math.pi * t / CABECEO))
         g = self.lado / 454.0
         fuera = []
 
@@ -110,16 +115,21 @@ class Hopf(Esfera):
 
         # Los dos eslabones. Están enlazados por construcción: dos fibras sobre
         # puntos distintos de S² tienen número de enlace 1, siempre.
-        hora = 2 * math.pi * (t / 3600.0 % 12.0) / 12.0
-        minuto = 2 * math.pi * (t / 60.0 % 60.0) / 60.0
-
-        for lat, ang, tono in ((T_HORA, hora, 0.09), (T_MINUTO, minuto, 0.47)):
+        for lat, ang, tono in self._eslabones(t):
             xy, d = self.cam(fibra(lat, ang, 220))
             cerca = self.cam.niebla(d, 1.3, 2.2)
             col = hsv_arr(np.full(220, tono), 0.82, 0.28 + 0.72 * cerca)
             fuera.append(Trazo(xy, col, 6.0 * g, 60))     # halo
             fuera.append(Trazo(xy, col, 2.3 * g, 255))    # eslabón
         return fuera
+
+    def _eslabones(self, t):
+        """Sobre qué puntos de S² van las fibras de la hora y del minuto.
+
+        Aparte para que una subclase pueda moverlas sin copiar `_calcular`.
+        """
+        return ((T_HORA, 2 * math.pi * (t / 3600.0 % 12.0) / 12.0, 0.09),
+                (T_MINUTO, 2 * math.pi * (t / 60.0 % 60.0) / 60.0, 0.47))
 
     def capa(self, t):
         lz = Lienzo(self.lado, sup=1)

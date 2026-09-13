@@ -1,9 +1,10 @@
 """Catálogo de esferas.
 
-Quince nombres salidos de seis módulos: las ocho `digital` son la misma
-maquetación con distinta tipografía, y `rosavivid` y `pulsoxl` son subclases de
-tres líneas de su hermana. En el Garmin cada una de esas quince era un
-proyecto Connect IQ entero, con su manifiesto y su propio id de app.
+Veinticinco nombres salidos de quince módulos, porque muchas son variantes de
+otra: las ocho `digital` son la misma maquetación con distinta tipografía, y
+`rosavivid`, `pulsoxl`, `finita`, `rosca` y `enlazada` son subclases de su
+hermana. En el Garmin cada una de las quince originales era un proyecto Connect
+IQ entero, con su manifiesto y su propio id de app.
 """
 
 import importlib
@@ -19,7 +20,9 @@ def _registrar(modulo, nombres):
 _registrar("disco", ["disco"])
 _registrar("eliptica", ["eliptica", "finita"])
 _registrar("toro", ["toro"])
+_registrar("rosca", ["rosca"])
 _registrar("hopf", ["hopf"])
+_registrar("enlazada", ["enlazada"])
 _registrar("superficie", ["superficie"])
 _registrar("grabada", ["grabada"])
 _registrar("pintada", ["pintada"])
@@ -37,8 +40,8 @@ DISPONIBLES = tuple(sorted(CATALOGO))
 FAMILIAS = (
     ("analógicas", ("disco", "rosa", "rosavivid")),
     ("curvas célebres", ("paseo",)),
-    ("geometría", ("pintada", "grabada", "superficie", "hopf",
-                   "toro", "eliptica", "finita")),
+    ("geometría", ("pintada", "grabada", "superficie", "enlazada", "hopf",
+                   "rosca", "toro", "eliptica", "finita")),
     ("en palabras", ("letras",)),
     ("con movimiento", ("orbita", "pulso", "pulsoxl")),
     ("digitales, por tipografía", ("bangers", "barriecito", "caesar", "honk",
