@@ -164,8 +164,8 @@ main { overflow: hidden; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las diecisiete de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin y dos de curvas elípticas</span>
+  <span class="sub">Las dieciocho de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin y tres de curvas elípticas</span>
 </header>
 
 <div class="mandos">
@@ -174,7 +174,7 @@ main { overflow: hidden; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="17">todas</button>
+    <button id="g15" data-n="18">todas</button>
   </div>
 
   <div class="grupo">
@@ -782,6 +782,112 @@ const finita = {
   }
 };
 
+
+/* =====================================================================
+   toro — la curva elíptica como lo que de verdad es.
+   Sus puntos COMPLEJOS forman C/L, y eso es un toro. Un toro tiene dos
+   ángulos: la hora y el minuto. El reloj no está sobre la superficie,
+   el reloj ES la superficie.
+   ===================================================================== */
+const R_DONUT = 1.00, R_TUBO = 0.42, CAMARA = 3.55, FOCO = 2.70, ZOOM = 0.66;
+const MALLA = 11, MPUNTOS = 84, VUELTA = 240, CABECEO = 90;
+
+// Retícula HEXAGONAL, no cuadrada: L = Z + tZ con t = exp(i·pi/3). Los tres
+// vectores más cortos son 1, t y t-1, así que hay TRES familias de rectas a 60
+// grados. Con solo dos sale una malla de cuadros; con las tres, el tejido
+// triangular de sus weierstrass-hex, y la superficie se lee como superficie.
+const TEJIDO = (() => {
+  const tau = 2*Math.PI, out = [];
+  for (let k = 0; k < MALLA; k++) {
+    const c = k / MALLA, A = [], B = [], C = [];
+    for (let i = 0; i < MPUNTOS; i++) {
+      const w = i / (MPUNTOS - 1);
+      A.push([tau*w, tau*c]);
+      B.push([tau*c, tau*w]);
+      C.push([tau*(c - w), tau*w]);
+    }
+    out.push(A, B, C);
+  }
+  return out;
+})();
+
+const toro = {
+  familia: "Roboto Mono",
+  dibujar(c, L, t) {
+    const r = L/2, g = L/454;
+    const giro = 2*Math.PI * (t / VUELTA);
+    const nada = 0.62 + 0.22 * Math.sin(2*Math.PI * t / CABECEO);
+    const ca = Math.cos(giro), sa = Math.sin(giro);
+    const cb = Math.cos(nada), sb = Math.sin(nada);
+
+    // (u,v) -> pantalla, devolviendo también la profundidad para la niebla.
+    const proy = (u, v) => {
+      const an = R_DONUT + R_TUBO*Math.cos(v);
+      const X = an*Math.cos(u), Y = an*Math.sin(u), Z = R_TUBO*Math.sin(v);
+      const x1 = X*ca - Y*sa, y1 = X*sa + Y*ca;
+      const y2 = y1*cb - Z*sb, z2 = y1*sb + Z*cb;
+      const d = y2 + CAMARA, k = FOCO / Math.max(d, 0.35) * ZOOM * r;
+      return [r + x1*k, r - z2*k, d];
+    };
+
+    c.lineCap = "round"; c.lineJoin = "round";
+
+    // Sin z-buffer, la niebla es lo único que dice qué está delante. Y basta:
+    // el ojo lee una malla que se apaga al fondo como una superficie curva.
+    c.lineWidth = 1.7 * g;
+    for (const linea of TEJIDO) {
+      let prev = null;
+      for (const [u, v] of linea) {
+        const P = proy(u, v);
+        if (prev) {
+          const cerca = Math.pow(Math.min(Math.max((CAMARA + 1 - P[2])/2, 0), 1), 1.7);
+          c.strokeStyle = hsv(0.53 + 0.20*(Math.cos(v)*0.5 + 0.5), 0.62,
+                              0.66 * (0.10 + 0.90*cerca));
+          c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(P[0], P[1]); c.stroke();
+        }
+        prev = P;
+      }
+    }
+
+    // Los dos aros. El de la HORA rodea el tubo y su posición alrededor del
+    // donut se lee como una manecilla vista desde arriba; el del MINUTO rodea
+    // el donut y su altura en el tubo dice el minuto.
+    const hora = (t/3600 % 12)/12 * 2*Math.PI;
+    const minuto = (t/60 % 60)/60 * 2*Math.PI;
+    for (const [fijo, esHora, tono] of [[hora, true, 0.10], [minuto, false, 0.47]]) {
+      for (const [ancho, alfa] of [[5.5, 0.28], [2.1, 1.0]]) {
+        c.lineWidth = ancho * g; c.globalAlpha = alfa;
+        let prev = null;
+        for (let i = 0; i <= 180; i++) {
+          const w = i/180 * 2*Math.PI;
+          const P = esHora ? proy(fijo, w) : proy(w, fijo);
+          if (prev) {
+            const cerca = Math.pow(Math.min(Math.max((CAMARA + 1 - P[2])/2, 0), 1), 1.4);
+            c.strokeStyle = hsv(tono, 0.80, 0.25 + 0.75*cerca);
+            c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(P[0], P[1]); c.stroke();
+          }
+          prev = P;
+        }
+      }
+    }
+    c.globalAlpha = 1;
+
+    // El instante: donde se cruzan los dos aros.
+    const P = proy(hora, minuto);
+    c.strokeStyle = "#FFF4D8"; c.lineWidth = 2.4 * g;
+    c.beginPath(); c.arc(P[0], P[1], 7*g, 0, 2*Math.PI); c.stroke();
+
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${L*46/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "rgba(242,245,248,.92)";
+    c.fillText(`${Math.floor(t/3600) % 12 || 12}:${String(Math.floor(t/60) % 60).padStart(2,"0")}`,
+               L/2, L*0.885);
+    c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "#6E86A0";
+    c.fillText("C / (Z + τZ)   con   τ = e^(iπ/3)", L/2, L*0.945);
+  }
+};
+
 /* ===================================================================== */
 const ESFERAS = {
   bangers: digital("bangers"), barriecito: digital("barriecito"),
@@ -789,7 +895,7 @@ const ESFERAS = {
   letras, londrina: digital("londrina"), orbita,
   pulso: pulso(false), pulsoxl: pulso(true),
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
-  smokum: digital("smokum"), sueellen: digital("sueellen"),
+  smokum: digital("smokum"), sueellen: digital("sueellen"), toro,
 };
 const NOMBRES = Object.keys(ESFERAS);
 

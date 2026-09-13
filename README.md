@@ -194,7 +194,7 @@ haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
 ## Las esferas
 
-Están **todas** las del Garmin, más dos nuevas. Diecisiete nombres, siete módulos:
+Están **todas** las del Garmin, más tres nuevas. Dieciocho nombres, ocho módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -205,6 +205,7 @@ Están **todas** las del Garmin, más dos nuevas. Diecisiete nombres, siete mód
 | `pulso` | `pulso`, `pulsoxl` | la fase sale de la hora, no se acumula (ver abajo) |
 | `digital` | las ocho tipografías | ocho proyectos Connect IQ pasan a ser un módulo |
 | `eliptica` | `eliptica`, `finita` | **nuevas**: no vienen del reloj (ver abajo) |
+| `toro` | `toro` | **nueva**: la superficie, en 3D |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -256,6 +257,28 @@ muere. Es el acontecimiento de la esfera, y pasa una vez por hora.
 No se dibuja una curva sino **las dieciséis últimas**, la de ahora encendida y
 las anteriores apagándose: una sola línea se pierde en una pantalla grande, y
 la familia enseña de dónde viene la forma y hacia dónde va.
+
+**`toro`** — la curva como lo que de verdad es.
+
+Las otras dos dibujan el lugar **real**: una curva en un plano. Pero eso es una
+sombra. Los puntos **complejos** forman `C/L`, y eso es una superficie — el
+toro que se ve en sus imágenes. Y un toro tiene exactamente dos ángulos.
+
+Así que aquí el reloj no está *encima* de un fondo bonito: **el reloj es la
+superficie**. La posición alrededor del donut es la hora, la posición alrededor
+del tubo es el minuto, y donde se cruzan los dos aros está el instante. La
+cámara da una vuelta cada cuatro minutos y cabecea cada noventa segundos —
+tiempos primos entre sí, para que el vaivén no se repita igual dos veces y no
+parezca un GIF en bucle.
+
+La retícula es **hexagonal**, `L = Z + tZ` con `t = exp(iπ/3)`. Los tres
+vectores más cortos son `1`, `t` y `t-1`, así que hay **tres** familias de
+rectas a 60 grados en vez de dos a 90. Con dos sale una malla de cuadros; con
+las tres, el tejido triangular de sus `weierstrass-hex` — y la superficie se
+lee como superficie y no como alambre. Cuesta lo mismo.
+
+No hay z-buffer: la profundidad la dice la **niebla**, y basta. El ojo lee una
+malla que se apaga al fondo como una superficie curva.
 
 **`finita`** — la misma curva sobre `F_p`, recorrida por su ley de grupo:
 `P, 2P, 3P…` uniendo saltos consecutivos con una cuerda. El primo lo pone la

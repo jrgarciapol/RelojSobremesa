@@ -238,3 +238,22 @@ def hsv(h, s, v):
     r, g, b = [(v, t, p), (q, v, p), (p, v, t),
                (p, q, v), (t, p, v), (v, p, q)][i]
     return (int(r * 255) << 16) | (int(g * 255) << 8) | int(b * 255)
+
+
+def hsv_arr(h, s, v):
+    """Como `hsv`, pero sobre arrays y devolviendo (N, 3) uint8.
+
+    El toro pinta unos 2.800 vértices doce veces por segundo. Llamando a `hsv`
+    en un bucle de Python eso son 33.000 llamadas por segundo, que en una Pi
+    Zero se come el fotograma entero. Vectorizado cuesta microsegundos.
+    """
+    h = np.mod(np.asarray(h, np.float32), 1.0) * 6.0
+    i = np.floor(h).astype(np.intp) % 6
+    f = h - np.floor(h)
+    s = np.broadcast_to(np.asarray(s, np.float32), h.shape)
+    v = np.broadcast_to(np.asarray(v, np.float32), h.shape)
+    p_, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    r = np.choose(i, [v, q, p_, p_, t, v])
+    g = np.choose(i, [t, v, v, q, p_, p_])
+    b = np.choose(i, [p_, p_, t, v, v, q])
+    return np.clip(np.stack([r, g, b], -1) * 255 + 0.5, 0, 255).astype(np.uint8)
