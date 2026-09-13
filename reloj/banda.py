@@ -112,6 +112,40 @@ def de_lejos_a_cerca(cuadros, xy, d):
                      q[:, 1], q[:, 3], q[:, 2]], axis=-1).ravel().astype(np.int32)
 
 
+def cinta(xy, s, ancho, ida_y_vuelta=False):
+    """Una cinta de anchura constante siguiendo una polilínea **del plano**.
+
+    Para las esferas que no tienen superficie donde pegar nada. Ahí la
+    superficie es el propio objeto: la cinta se pega a lo largo de la curva y
+    las cifras se doblan con ella.
+
+    `xy` va ya en píxeles —estas esferas dibujan directamente en el dial, sin
+    cámara— y `s` dice qué punto de la etiqueta le toca a cada muestra,
+    normalizado a [0, 1]. Que `s` no sea la longitud de arco es justo la gracia
+    en las dos que la usan: lo que reparte las horas es la ley de grupo.
+
+    Devuelve `(puntos, uv, triángulos)`, ya listos para una `Malla`. No hay
+    caras que quitar ni nada que ordenar: es plano.
+    """
+    d = np.gradient(np.asarray(xy, float), axis=0)
+    n = np.stack([-d[:, 1], d[:, 0]], axis=1)
+    n /= np.maximum(np.hypot(n[:, 0], n[:, 1]), 1e-9)[:, None]
+
+    m = len(xy)
+    pts = np.empty((2 * m, 2), np.float32)
+    pts[0::2] = xy + n * (ancho / 2.0)
+    pts[1::2] = xy - n * (ancho / 2.0)
+
+    uv = np.empty((2 * m, 2), np.float32)
+    uv[0::2, 0] = uv[1::2, 0] = s
+    uv[0::2, 1] = 1.0
+    uv[1::2, 1] = 0.0
+
+    a = 2 * np.arange(m - 1)
+    idx = np.stack([a, a + 1, a + 2, a + 1, a + 3, a + 2], axis=-1)
+    return pts, uv, idx.ravel().astype(np.int32)
+
+
 def tinte_niebla(cam, d, dureza=1.5, fondo=1.9, suelo=0.22):
     """Color por vértice para que la banda se apague por detrás igual que la
     superficie que la lleva. Gris: multiplica a la textura, no la tiñe."""

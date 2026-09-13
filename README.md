@@ -46,9 +46,9 @@ python -m reloj --velocidad 600          # una hora de reloj cada 6 segundos
 
 `--velocidad` no es un juguete: la familia de `eliptica` da una vuelta por
 **hora**, la cámara de las esferas 3D tarda entre cuatro y cinco minutos en dar
-la vuelta y `paseo` cambia de curva cada minuto, así que a velocidad real no hay forma de juzgar si el
-movimiento funciona. En la página hay los mismos multiplicadores en botones, y
-en `reloj.bat` es la opción 5.
+la vuelta y `paseo` cambia de curva cada minuto, así que a velocidad real no hay
+forma de juzgar si el movimiento funciona. En la página hay los mismos
+multiplicadores en botones, y en `reloj.bat` es la opción 5.
 
 (En Linux y en la Pi, `python3` en vez de `python`.)
 
@@ -111,7 +111,7 @@ El banco de medida es `python3 utiles/medir.py 1080`.
 
 ## Verlas sin la Raspberry: `reloj.html`
 
-Una reimplementación en Canvas de las veinticinco, en una página suelta. Doble
+Una reimplementación en Canvas de las veintisiete, en una página suelta. Doble
 clic y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o todas a la vez,
 pantalla completa, un cursor para recorrer el día y otro para las pulsaciones.
 
@@ -493,6 +493,53 @@ milésimas de grado de error sobre las doce.
 `P, 2P, 3P…` uniendo saltos consecutivos con una cuerda. El primo lo pone la
 hora y el coeficiente `a` el minuto, así que son **12 × 60 figuras y ninguna se
 repite**.
+
+**`rotulada`** — la curva elíptica con las doce horas impresas encima.
+
+`eliptica` es plana: no hay superficie donde pegar una etiqueta. Pero sí hay
+dónde — **la propia curva**. La cinta se pega a lo largo de ella y las cifras se
+doblan con su forma, y cuando el lazo cruza el discriminante y la curva se
+pellizca, la rotulación se pellizca con ella.
+
+Y dónde cae cada hora no se reparte a ojo. La coordenada natural de una curva
+elíptica es el **parámetro elíptico** `u = ∫ dx/2y`, que es en la que la ley de
+grupo es sumar: `P + Q` es `u_P + u_Q`. Repartir las doce horas por igual en `u`
+es repartirlas por igual **en el grupo**, así que esto es un dial de verdad —
+la esfera de un reloj que resulta tener forma de curva elíptica. Y la cuenta
+avanza también en `u`, así que a la una en punto está sobre el 1.
+
+Con una salvedad honrada: la rama se va al infinito y la ventana la corta, así
+que el dial es **el arco que se ve**, no el periodo entero. La cola desde el
+borde hasta el infinito se lleva un tercio largo del semiperiodo, y repartiendo
+por el periodo real cuatro de las doce horas caerían fuera de la pantalla.
+
+La integral se hace por el punto medio de cada tramo: en la raíz `y` vale cero
+y dividir por ella ahí daría infinito. Converge de todas formas —cerca de una
+raíz simple `dx/y` va como `dx/√(x-r)`— y el muestreo por coseno que ya hacía
+`_lazo` es justo el cambio de variable que la alisa.
+
+**`bordada`** — la ley de grupo sobre `F_p`, bordada en el toro que **es** su
+tablero.
+
+Lo obvio era lo de `rotulada`: pegar la cinta a lo largo del recorrido. **No se
+puede, y el número lo dice.** El recorrido son sesenta cuerdas de doscientos
+píxeles, así que a cada una le toca un sesentavo de la etiqueta estirado cinco
+veces —hasta catorce en la peor— y lo que sale es un destello blanco. Anclando
+las doce horas en sus puntos del grupo y repartiendo el resto por longitud de
+arco tampoco: los doceavos del recorrido tienen longitudes que se llevan **44 a
+1**, así que unas horas se solapan y otras se van al otro extremo. No hay
+reparametrización que lo arregle; el soporte es el que está mal.
+
+Y el bueno estaba delante. **El tablero es un toro.** Los puntos viven en
+`F_p × F_p`, y eso son dos círculos: `x` módulo `p` e `y` módulo `p`. El
+cuadrado plano de `finita` es la mentira cómoda — corta el toro por dos sitios
+y hace que las cuerdas se acaben en los bordes. Enrollado, **las cuerdas dan la
+vuelta**: una recta del plano afín sobre `F_p` es una geodésica cerrada, y se la
+ve serpentear por la superficie y volver por el otro lado. Cada cuerda se
+levanta al recubridor universal por el camino más corto, que es lo que la hace
+cruzar el borde en vez de cortarse ahí.
+
+Sobre esa superficie la etiqueta se pega como en `rosca`, y ahí sí se lee.
 
 ### Tres cosas que salieron de mirar el resultado
 

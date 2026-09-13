@@ -166,9 +166,9 @@ main { overflow: hidden; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las veinticinco de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin, nueve de geometría y una de curvas célebres ·
-    abre por la última, <b>rosca</b></span>
+  <span class="sub">Las veintisiete de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin, once de geometría y una de curvas célebres ·
+    abre por la última, <b>rotulada</b></span>
 </header>
 
 <div class="mandos">
@@ -177,7 +177,7 @@ main { overflow: hidden; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="25">todas</button>
+    <button id="g15" data-n="27">todas</button>
   </div>
 
   <div class="grupo">
@@ -682,33 +682,120 @@ function trozos(a, b) {
 const baseEliptica = digital("barriecito",
   { time:"#FFFFFF", verde:"#64D8C6", mes:"#6E7A93" });
 
+// La familia de curvas, que es el fondo de `eliptica` y de `rotulada`.
+function familiaEliptica(c, L, t) {
+  const k = L / (X1 - X0), r = L / 2;
+  const fase = (t / 3600) % 1;
+  c.lineCap = "round"; c.lineJoin = "round";
+  // De la más vieja a la más nueva, para que la de ahora quede encima.
+  for (let i = ESTELA - 1; i >= 0; i--) {
+    const f = i / (ESTELA - 1);
+    const [a, b] = parametros(fase - f * ANCHO_ESTELA);
+    c.strokeStyle = hsv(0.52 + 0.16*f, 0.72, 0.14 + 0.86*Math.pow(1-f, 2.2));
+    c.lineWidth = L * (1 + 2.4*Math.pow(1-f, 3)) / 454;
+    c.globalAlpha = i === 0 ? 1 : 0.75;
+    for (const pts of trozos(a, b)) {
+      c.beginPath();
+      pts.forEach(([x, y], j) => {
+        const px = (x - X0) * k, py = r - y * k;
+        j ? c.lineTo(px, py) : c.moveTo(px, py);
+      });
+      c.stroke();
+    }
+  }
+  c.globalAlpha = 1;
+}
+
 const eliptica = {
   familia: "Barriecito",
   dibujar(c, L, t) {
-    const k = L / (X1 - X0), r = L / 2;
-    const fase = (t / 3600) % 1;
-    c.lineCap = "round"; c.lineJoin = "round";
-    // De la más vieja a la más nueva, para que la de ahora quede encima.
-    for (let i = ESTELA - 1; i >= 0; i--) {
-      const f = i / (ESTELA - 1);
-      const [a, b] = parametros(fase - f * ANCHO_ESTELA);
-      c.strokeStyle = hsv(0.52 + 0.16*f, 0.72, 0.14 + 0.86*Math.pow(1-f, 2.2));
-      c.lineWidth = L * (1 + 2.4*Math.pow(1-f, 3)) / 454;
-      c.globalAlpha = i === 0 ? 1 : 0.75;
-      for (const pts of trozos(a, b)) {
-        c.beginPath();
-        pts.forEach(([x, y], j) => {
-          const px = (x - X0) * k, py = r - y * k;
-          j ? c.lineTo(px, py) : c.moveTo(px, py);
-        });
-        c.stroke();
-      }
-    }
-    c.globalAlpha = 1;
+    familiaEliptica(c, L, t);
     // La hora, velada: la curva se ve a través de las cifras.
     c.save(); c.globalAlpha = 170/255;
     baseEliptica.dibujar(c, L, t);
     c.restore();
+  }
+};
+
+/* =====================================================================
+   rotulada — la curva elíptica con las doce horas impresas encima.
+
+   `eliptica` es plana: no hay superficie donde pegar una etiqueta. Pero
+   sí hay dónde — LA PROPIA CURVA. La cinta se pega a lo largo de ella y
+   las cifras se doblan con su forma; cuando el lazo cruza el
+   discriminante y la curva se pellizca, la rotulación se pellizca con ella.
+
+   Y dónde cae cada hora no se reparte a ojo. La coordenada natural de una
+   curva elíptica es el PARÁMETRO ELÍPTICO u = ∫ dx/2y, que es en la que
+   la ley de grupo es sumar: P + Q es u_P + u_Q. Repartir las doce horas
+   por igual en u es repartirlas por igual EN EL GRUPO, así que esto es un
+   dial de verdad — la esfera de un reloj con forma de curva elíptica. Y
+   la cuenta avanza también en u, así que a la una está sobre el 1.
+
+   Con una salvedad honrada: la rama se va al infinito y la ventana la
+   corta, así que el dial es el arco que se ve, no el periodo entero.
+   ===================================================================== */
+const ROT_TEX_W = 2048, ROT_TEX_H = 128;
+const ROT_ANCHO = 26 / 454, ROT_CUENTA = 13 / 454;
+const ROT_MUESTRAS = 76, ROT_MUESTRAS_LEJOS = 34;
+
+// El parámetro elíptico a lo largo de la rama, normalizado a [0, 1]. Se
+// integra por el punto medio de cada tramo: en la raíz y vale cero y dividir
+// por ella ahí daría infinito. La integral converge —cerca de una raíz simple
+// dx/y va como dx/√(x-r)— y el muestreo por coseno de `lazo` hace justo el
+// cambio de variable que la alisa.
+function parametroEliptico(pts, a, b) {
+  const u = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const xm = (pts[i-1][0] + pts[i][0]) / 2;
+    const ym = Math.sqrt(Math.max(xm*xm*xm + a*xm + b, 0));
+    u.push(u[i-1] + Math.abs(pts[i][0] - pts[i-1][0]) / (2 * Math.max(ym, 1e-9)));
+  }
+  const T = u[u.length-1] || 1;
+  return u.map(v => v / T);
+}
+
+const rotulada = {
+  familia: "Barriecito",
+  tex: null,
+  dibujar(c, L, t) {
+    familiaEliptica(c, L, t);
+    if (!this.tex) this.tex = etiqueta(ROT_TEX_W, ROT_TEX_H);
+
+    const k = L / (X1 - X0), r = L / 2;
+    const [a, b] = parametros((t / 3600) % 1);
+    const piezas = trozos(a, b);
+    if (!piezas.length) return;
+    // La rama, no el óvalo: el óvalo nace y muere una vez por hora y un dial
+    // que desaparece media hora no es un dial.
+    const rama = piezas[piezas.length - 1];
+    const u = parametroEliptico(rama, a, b);
+
+    // Se muestrea más basta que la curva: cada cuadro de la cinta cuesta un
+    // recorte y una afín a mano, igual que en `pintada`.
+    const n = L >= FINA ? ROT_MUESTRAS : ROT_MUESTRAS_LEJOS;
+    const xy = [], s = [];
+    for (let i = 0; i < n; i++) {
+      const j = Math.min(rama.length - 1, Math.round(i * (rama.length - 1) / (n - 1)));
+      xy.push([(rama[j][0] - X0) * k, r - rama[j][1] * k]);
+      s.push(u[j]);
+    }
+    pintarCinta(c, this.tex, xy, s, L * ROT_ANCHO);
+
+    // La cuenta, donde le toca EN EL PARÁMETRO: por eso señala su número.
+    const f = (t/3600 % 12) / 12;
+    let j = 0;
+    while (j < u.length - 1 && u[j] < f) j++;
+    cuenta(c, (rama[j][0] - X0) * k, r - rama[j][1] * k, L * ROT_CUENTA, "#FFE9C0");
+
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${L*46/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "rgba(242,245,248,.92)";
+    c.fillText(`${Math.floor(t/3600) % 12 || 12}:${String(Math.floor(t/60) % 60).padStart(2,"0")}`,
+               L/2, L*0.885);
+    c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "#6E86A0";
+    c.fillText("las horas, repartidas por el parámetro", L/2, L*0.945);
   }
 };
 
@@ -953,6 +1040,110 @@ const MALLA_RO_LEJOS = mallaToro(R_DONUT, R_TUBO, RO_V0, RO_V1, 30, 2,
 const rosca = hazToro({ tejido: 0.34, cab: 1.05, vaiven: 0.20, zoom: 0.58,
                         banda: true,
                         pie: "las horas, impresas donde el toro más se curva" });
+
+
+/* =====================================================================
+   bordada — la ley de grupo sobre F_p, bordada en el toro que ES su tablero.
+
+   Lo obvio era pegar la cinta a lo largo del recorrido, como en
+   `rotulada`. No se puede, y el número lo dice: son sesenta cuerdas de
+   doscientos píxeles, así que a cada una le toca un sesentavo de la
+   etiqueta estirado cinco veces —hasta catorce en la peor— y sale un
+   destello blanco. Anclando las doce horas en sus puntos del grupo
+   tampoco: los doceavos del recorrido tienen longitudes que se llevan
+   44 a 1. No hay reparametrización que lo arregle; el soporte está mal.
+
+   Y el bueno estaba delante. EL TABLERO ES UN TORO: los puntos viven en
+   F_p × F_p, y eso son dos círculos, x mod p e y mod p. El cuadrado plano
+   de `finita` es la mentira cómoda — corta el toro y hace que las cuerdas
+   se acaben en los bordes. Enrollado, LAS CUERDAS DAN LA VUELTA, que es lo
+   que de verdad hace una recta del plano afín sobre F_p.
+   ===================================================================== */
+const BO_POR_CUERDA = 10, BO_POR_CUERDA_LEJOS = 4;
+
+// Cada cuerda se levanta al recubridor universal por el camino más corto: de
+// las infinitas maneras de ir de x1 a x2 módulo p se toma la que menos da la
+// vuelta. Es lo que la hace cruzar el borde y seguir por el otro lado.
+function enrollar(pts, p, porCuerda) {
+  const out = [], enToro = (x, y) => {
+    const u = 2*Math.PI*x/p, v = 2*Math.PI*y/p;
+    const an = R_DONUT + R_TUBO*Math.cos(v);
+    return [an*Math.cos(u), an*Math.sin(u), R_TUBO*Math.sin(v)];
+  };
+  for (let i = 0; i < pts.length - 1; i++) {
+    let dx = (((pts[i+1][0] - pts[i][0]) % p) + p) % p; if (dx > p/2) dx -= p;
+    let dy = (((pts[i+1][1] - pts[i][1]) % p) + p) % p; if (dy > p/2) dy -= p;
+    for (let k = 0; k < porCuerda; k++) {
+      const w = k / porCuerda;
+      out.push(enToro(pts[i][0] + dx*w, pts[i][1] + dy*w));
+    }
+  }
+  out.push(enToro(pts[pts.length-1][0], pts[pts.length-1][1]));
+  return out;
+}
+
+const bordada = {
+  familia: "Roboto Mono",
+  tex: null,
+  cache: {},
+  dibujar(c, L, t) {
+    const r = L/2, g = L/454;
+    const hora = Math.floor(t/3600) % 24, minuto = Math.floor(t/60) % 60;
+    const p = PRIMOS[hora % 12], fino = L >= FINA;
+    const clave = `${p}:${minuto}:${fino}`;
+    if (this.cache.clave !== clave) {
+      const o = recorrido(p, minuto, 1);
+      this.cache = { clave, hilo: o.length < 2 ? [] :
+        enrollar(o, p, fino ? BO_POR_CUERDA : BO_POR_CUERDA_LEJOS) };
+    }
+    const hilo = this.cache.hilo;
+
+    const giro = 2*Math.PI * (t / VUELTA);
+    const cab = 1.05 + 0.20 * Math.sin(2*Math.PI * t / CABECEO);
+    const ca = Math.cos(giro), sa = Math.sin(giro);
+    const cb = Math.cos(cab), sb = Math.sin(cab);
+    const proy = ([X, Y, Z]) => {
+      const x1 = X*ca - Y*sa, y1 = X*sa + Y*ca;
+      const y2 = y1*cb - Z*sb, z2 = y1*sb + Z*cb;
+      const d = y2 + CAMARA, k = FOCO / Math.max(d, 0.35) * 0.58 * r;
+      return [r + x1*k, r - z2*k, d];
+    };
+    const niebla = (d, dur) =>
+      Math.pow(Math.min(Math.max((CAMARA + 1.9 - d)/3.8, 0), 1), dur);
+
+    c.lineCap = "round"; c.lineJoin = "round";
+    // El tono avanza con el recorrido: se ve por dónde empezó y por dónde va,
+    // que es la mitad de la gracia. El brillo lo pone la profundidad.
+    for (const [ancho, alfa] of [[4.4, 0.20], [1.6, 0.90]]) {
+      c.lineWidth = ancho*g; c.globalAlpha = alfa;
+      let prev = null;
+      for (let i = 0; i < hilo.length; i++) {
+        const P = proy(hilo[i]);
+        if (prev) {
+          c.strokeStyle = hsv(0.48 + 0.34*i/hilo.length, 0.68,
+                              0.34 + 0.66*niebla(P[2], 1.3));
+          c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(P[0], P[1]); c.stroke();
+        }
+        prev = P;
+      }
+    }
+    c.globalAlpha = 1;
+
+    if (!this.tex) this.tex = etiqueta(RO_TEX_W, RO_TEX_H);
+    const M = fino ? MALLA_RO : MALLA_RO_LEJOS;
+    pintarBanda(c, this.tex, M.pts.map(proy), M.uv, M.cuadros,
+                d => 0.42 + 0.58 * Math.pow(
+                  Math.min(Math.max((CAMARA + 2.4 - d)/4.8, 0), 1), 1.2));
+
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${L*46/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "rgba(242,245,248,.92)";
+    c.fillText(`${hora % 12 || 12}:${String(minuto).padStart(2,"0")}`, L/2, L*0.885);
+    c.font = `${L*19/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "#8DA2B8";
+    c.fillText(`el tablero F${p} x F${p} es un toro`, L/2, L*0.945);
+  }
+};
 
 
 /* =====================================================================
@@ -1425,6 +1616,38 @@ function bandaVisible(pv, cuadros) {
   return out;
 }
 
+// Una cinta de anchura constante siguiendo una polilínea DEL PLANO, para las
+// esferas que no tienen superficie donde pegar nada: ahí la superficie es el
+// propio objeto. `s` dice qué punto de la etiqueta le toca a cada muestra; que
+// no sea la longitud de arco es justo la gracia. No hay caras que quitar ni
+// nada que ordenar: es plano.
+function pintarCinta(c, tex, xy, s, ancho) {
+  const m = xy.length, W = tex.width, H = tex.height, A = [], B = [];
+  for (let i = 0; i < m; i++) {
+    const p = xy[Math.max(0, i-1)], q = xy[Math.min(m-1, i+1)];
+    let nx = -(q[1]-p[1]), ny = q[0]-p[0];
+    const L = Math.hypot(nx, ny) || 1;
+    nx = nx/L*ancho/2; ny = ny/L*ancho/2;
+    A.push([xy[i][0]+nx, xy[i][1]+ny]);
+    B.push([xy[i][0]-nx, xy[i][1]-ny]);
+  }
+  for (let i = 0; i < m-1; i++) {
+    const u0 = s[i]*(W-1), u1 = s[i+1]*(W-1);
+    triTextura(c, tex, [A[i], B[i], A[i+1]], [[u0,H-1],[u0,0],[u1,H-1]]);
+    triTextura(c, tex, [B[i], B[i+1], A[i+1]], [[u0,0],[u1,0],[u1,H-1]]);
+  }
+}
+
+// La cuenta que marca la hora: un disco blando, como el `disco_blando` de
+// Python. Un círculo liso se ve como un pegote a este tamaño.
+function cuenta(c, x, y, r, color) {
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color); g.addColorStop(0.55, color);
+  g.addColorStop(1, "rgba(255,233,192,0)");
+  c.fillStyle = g;
+  c.beginPath(); c.arc(x, y, r, 0, 2*Math.PI); c.fill();
+}
+
 // Pinta una banda ya proyectada. `niebla` la apaga por detrás igual que la
 // superficie que la lleva.
 function pintarBanda(c, tex, pv, uv, cuadros, niebla) {
@@ -1739,6 +1962,7 @@ const ESFERAS = {
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
   smokum: digital("smokum"), sueellen: digital("sueellen"),
   superficie, grabada, pintada, paseo, toro, rosca, enlazada,
+  rotulada, bordada,
 };
 const NOMBRES = Object.keys(ESFERAS);
 
@@ -1751,7 +1975,7 @@ const NOMBRES = Object.keys(ESFERAS);
 // Va por nombre y no como «la última de la lista», porque la lista está en
 // orden alfabético: `hopf` se coló en medio y la página seguía abriendo por
 // `toro`. Al añadir una esfera, cambiar esta línea.
-const NUEVA = "rosca";
+const NUEVA = "rotulada";
 let indice = Math.max(0, NOMBRES.indexOf(NUEVA));
 let cuantas = 4;
 // Reloj virtual. La familia de `eliptica` da una vuelta por HORA y la cámara
