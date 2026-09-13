@@ -23,13 +23,14 @@ tinta, que en el reloj era inviable, aquí es justo la que toca.
 
 ## Cómo se usa
 
-Desde la raíz del repositorio, una sola vez:
+**En Windows: doble clic en `reloj.bat`.** Instala lo que falte la primera vez
+y saca un menú. No hay que escribir nada.
+
+A mano, o en Linux y en la Pi:
 
 ```sh
 pip install -r requirements.txt
 ```
-
-Y ya:
 
 ```sh
 python -m reloj --lista                  # qué esferas hay
@@ -41,14 +42,23 @@ python -m reloj --lamina x.png --hora 10:09 1:50 6:30 8:20
 python -m reloj --lamina todas.png --esfera TODAS
 ```
 
-En Windows hay `run.bat`, que abre la ventana sin escribir nada. En Linux y en
-la Pi, `python3` en vez de `python`.
+(En Linux y en la Pi, `python3` en vez de `python`.)
+
+Con la ventana abierta no hace falta volver a la consola para nada:
+
+| tecla | |
+|---|---|
+| **flechas** o **espacio** | pasar de una esfera a la siguiente |
+| **g** | guardar un PNG de lo que se está viendo |
+| **Esc** o **q** | salir |
+
+Se arranca con **las quince cargadas** y empezando por la que se pida, así que
+compararlas es cuestión de ir dando a la flecha. Al cambiar aparece el nombre
+arriba a la izquierda y se apaga solo.
 
 Con `--lamina` no abre pantalla ni toca SDL: compone con Pillow y guarda un
 PNG. Sirve para trabajar el diseño sin tener la Pi delante — y sin la Pi
 siquiera.
-
-`Esc` o `q` para salir.
 
 ## Cómo está montado
 

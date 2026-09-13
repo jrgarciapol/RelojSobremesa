@@ -2,14 +2,20 @@
 
     python -m reloj                          pantalla completa
     python -m reloj --ventana                en una ventana de 800
-    python -m reloj --esfera letras
+    python -m reloj --esfera letras          arranca en esa
     python -m reloj --lista                  qué esferas hay
+
+Con la ventana abierta:
+
+    flechas / espacio    pasar de una esfera a la siguiente
+    g                    guardar un PNG de lo que se ve
+    Esc  o  q            salir
+
+Y sin abrir pantalla ni tocar SDL, componiendo con Pillow:
 
     python -m reloj --lamina x.png --hora 10:09:38
     python -m reloj --lamina h.png --hora 10:09 1:50 6:30 8:20
     python -m reloj --lamina todas.png --esfera TODAS
-
-Con `--lamina` no hace falta pantalla ni SDL: compone con Pillow y guarda.
 """
 
 import argparse
@@ -64,8 +70,18 @@ def main():
         print("%s  (%dx%d)" % (a.lamina, im.width, im.height))
         return
 
+    # Se le pasan TODAS, para poder pasear por ellas con las flechas sin
+    # cerrar la ventana; arranca en la pedida.
+    nombres = list(DISPONIBLES)
+    if a.esfera.upper() == "TODAS":
+        arranque = 0
+    else:
+        cargar(a.esfera)              # valida el nombre antes de abrir nada
+        arranque = nombres.index(a.esfera)
+
     from . import pantalla
-    pantalla.correr(cargar(a.esfera), lado=a.lado, ventana=a.ventana, fps=a.fps)
+    pantalla.correr(nombres, arranque, lado=a.lado, ventana=a.ventana,
+                    fps=a.fps)
 
 
 if __name__ == "__main__":
