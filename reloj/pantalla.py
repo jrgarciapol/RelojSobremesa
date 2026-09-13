@@ -1,11 +1,11 @@
-"""Salida por SDL2: sube los arrays a la tarjeta y los rota por hardware.
+"""Salida por SDL2: sube los arrays a la tarjeta y los mueve por hardware.
 
 Misma pila que el simulador de conducción (`pysdl2` + `numpy`), y por la misma
 razón: SDL2 pinta sobre KMS/DRM sin escritorio, así que en la Pi arranca contra
 la pantalla pelada, sin X ni Wayland.
 
-Por fotograma solo hay un `RenderCopy` del fondo y un `RenderCopyEx` por aguja.
-El coste real de dibujar se pagó entero al arrancar.
+Por fotograma solo hay `RenderCopyEx`: rotar, escalar y teñir los hace la GPU.
+El coste de rasterizar se pagó al arrancar.
 """
 
 import ctypes
@@ -16,7 +16,7 @@ import sdl2
 
 
 def _textura(ren, arr):
-    """numpy (h, w, 3|4) uint8 -> SDL_Texture.
+    """numpy (h, w, 3|4) uint8 -> (SDL_Texture, (ancho, alto)).
 
     El array tiene que seguir vivo mientras exista la superficie, así que se
     libera la superficie **antes** de salir de la función.
@@ -24,8 +24,8 @@ def _textura(ren, arr):
     arr = np.ascontiguousarray(arr)
     h, w = arr.shape[:2]
     if arr.shape[2] == 3:
-        arr = np.dstack([arr, np.full((h, w, 1), 255, np.uint8)])
-        arr = np.ascontiguousarray(arr)
+        arr = np.ascontiguousarray(
+            np.dstack([arr, np.full((h, w, 1), 255, np.uint8)]))
     # numpy guarda R,G,B,A en ese orden de bytes; en little-endian eso es un
     # uint32 ABGR.
     sup = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(
@@ -34,17 +34,17 @@ def _textura(ren, arr):
     tex = sdl2.SDL_CreateTextureFromSurface(ren, sup)
     sdl2.SDL_FreeSurface(sup)
     sdl2.SDL_SetTextureBlendMode(tex, sdl2.SDL_BLENDMODE_BLEND)
-    return tex
+    return tex, (w, h)
 
 
-def _ahora():
+def ahora():
     """Segundos desde medianoche, hora local, con decimales."""
     t = time.time()
     lt = time.localtime(t)
     return lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec + (t % 1.0)
 
 
-def correr(esfera, lado=None, ventana=False, fps=30):
+def correr(Clase, lado=None, ventana=False, fps=30, hora=None):
     if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) != 0:
         raise SystemExit(sdl2.SDL_GetError().decode())
 
@@ -69,13 +69,31 @@ def correr(esfera, lado=None, ventana=False, fps=30):
         win, -1, sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC)
     sdl2.SDL_ShowCursor(sdl2.SDL_DISABLE)
 
-    fondo = _textura(ren, esfera.fondo(lado))
-    piezas = {n: _textura(ren, a) for n, a in esfera.piezas(lado).items()}
+    esf = Clase(lado)
+    ox, oy = (ancho - lado) // 2, (alto - lado) // 2
 
-    dst = sdl2.SDL_Rect((ancho - lado) // 2, (alto - lado) // 2, lado, lado)
-    centro = sdl2.SDL_Point(lado // 2, lado // 2)
+    f = esf.fondo()
+    tex_fondo = _textura(ren, f)[0] if f is not None else None
+    piezas = {n: _textura(ren, a) for n, a in esf.piezas().items()}
+
+    tex_capa, clave_capa = None, object()
+    dst_dial = sdl2.SDL_Rect(ox, oy, lado, lado)
     ev = sdl2.SDL_Event()
     espera = 1.0 / fps
+
+    def poner(p):
+        tex, (w, h) = piezas[p.pieza]
+        w, h = max(1, int(w * p.escala)), max(1, int(h * p.escala))
+        dst = sdl2.SDL_Rect(int(ox + p.x - w / 2.0), int(oy + p.y - h / 2.0), w, h)
+        if p.color is None:
+            sdl2.SDL_SetTextureColorMod(tex, 255, 255, 255)
+        else:
+            sdl2.SDL_SetTextureColorMod(tex, (p.color >> 16) & 0xFF,
+                                        (p.color >> 8) & 0xFF, p.color & 0xFF)
+        sdl2.SDL_SetTextureAlphaMod(tex, int(p.alfa))
+        centro = sdl2.SDL_Point(w // 2, h // 2)
+        sdl2.SDL_RenderCopyEx(ren, tex, None, ctypes.byref(dst), p.grados,
+                              ctypes.byref(centro), sdl2.SDL_FLIP_NONE)
 
     try:
         while True:
@@ -86,21 +104,36 @@ def correr(esfera, lado=None, ventana=False, fps=30):
                         and ev.key.keysym.sym in (sdl2.SDLK_ESCAPE, sdl2.SDLK_q)):
                     return
 
-            ang = esfera.angulos(_ahora())
+            t = ahora() if hora is None else hora
 
             sdl2.SDL_SetRenderDrawColor(ren, 0, 0, 0, 255)
             sdl2.SDL_RenderClear(ren)
-            sdl2.SDL_RenderCopy(ren, fondo, None, ctypes.byref(dst))
-            for n in esfera.ORDEN:
-                sdl2.SDL_RenderCopyEx(ren, piezas[n], None, ctypes.byref(dst),
-                                      ang.get(n, 0.0), ctypes.byref(centro),
-                                      sdl2.SDL_FLIP_NONE)
+            if tex_fondo is not None:
+                sdl2.SDL_RenderCopy(ren, tex_fondo, None, ctypes.byref(dst_dial))
+
+            for p in esf.detras(t):
+                poner(p)
+
+            c = esf.capa(t)
+            if c is not None:
+                if c[0] != clave_capa:
+                    if tex_capa is not None:
+                        sdl2.SDL_DestroyTexture(tex_capa)
+                    tex_capa = _textura(ren, c[1])[0]
+                    clave_capa = c[0]
+                sdl2.SDL_RenderCopy(ren, tex_capa, None, ctypes.byref(dst_dial))
+
+            for p in esf.cuadro(t):
+                poner(p)
+
             sdl2.SDL_RenderPresent(ren)
             time.sleep(espera)
     finally:
-        for t in piezas.values():
-            sdl2.SDL_DestroyTexture(t)
-        sdl2.SDL_DestroyTexture(fondo)
+        for tex, _ in piezas.values():
+            sdl2.SDL_DestroyTexture(tex)
+        for tex in (tex_fondo, tex_capa):
+            if tex is not None:
+                sdl2.SDL_DestroyTexture(tex)
         sdl2.SDL_DestroyRenderer(ren)
         sdl2.SDL_DestroyWindow(win)
         sdl2.SDL_Quit()

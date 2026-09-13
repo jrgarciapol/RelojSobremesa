@@ -32,10 +32,13 @@ pip install -r requirements.txt
 Y ya:
 
 ```sh
-python -m reloj                          # pantalla completa
-python -m reloj --ventana                # en una ventana de 800
-python -m reloj --lamina prueba.png --hora 10:09:38
-python -m reloj --lamina hoja.png --hora 10:09 1:50 6:30 8:20
+python -m reloj --lista                  # qué esferas hay
+python -m reloj --esfera letras          # pantalla completa
+python -m reloj --esfera disco --ventana # en una ventana de 800
+
+python -m reloj --lamina x.png --hora 10:09:38
+python -m reloj --lamina x.png --hora 10:09 1:50 6:30 8:20
+python -m reloj --lamina todas.png --esfera TODAS
 ```
 
 En Windows hay `run.bat`, que abre la ventana sin escribir nada. En Linux y en
@@ -49,31 +52,36 @@ siquiera.
 
 ## Cómo está montado
 
-Tres piezas, y el reparto entre ellas es lo que hace que esto quepa en una Pi
-Zero 2 W:
-
 ```
-reloj/esferas/   dibujan UNA VEZ al arrancar y devuelven arrays numpy
-reloj/lienzo     rasteriza a 4x con Pillow y reduce -> antialiasing de verdad
-reloj/pantalla   sube los arrays a la tarjeta y los rota por hardware (SDL2)
+reloj/lienzo     rasteriza con Pillow y reduce -> antialiasing de verdad
+reloj/esfera     el molde que cumplen todas las esferas
+reloj/esferas/   los diseños
+reloj/pantalla   sube los arrays a la tarjeta y los mueve por hardware (SDL2)
 reloj/lamina     los compone con Pillow, sin pantalla, para el PNG
 ```
 
-**El coste de dibujar se paga entero al arrancar.** Por fotograma solo hay un
-`RenderCopy` del fondo y un `RenderCopyEx` por aguja — que es una rotación
-bilineal en la GPU, no un redibujado. Una aguja es la misma forma en los 360
-grados, así que no hay ninguna razón para volver a rasterizarla.
-
-Una esfera **no sabe nada de SDL**. Solo ofrece cuatro cosas:
+Una esfera **no sabe nada de SDL**: solo dice qué dibujar. El reparto del
+trabajo es lo que decide cuánto cuesta **cada fotograma**, que es lo que una Pi
+Zero 2 W puede o no puede pagar:
 
 ```python
-fondo(lado)    -> (lado, lado, 3) uint8      lo que no se mueve
-piezas(lado)   -> {nombre: (lado, lado, 4)}  apuntando a las 12, pivote al centro
-angulos(t)     -> {nombre: grados horarios}  t = segundos desde medianoche
-ORDEN          -> los nombres, en orden de dibujo
+fondo()      se rasteriza UNA VEZ y no cambia nunca       (marcas, rosa)
+piezas()     se rasterizan UNA VEZ y luego solo se mueven (agujas, orbes)
+capa(t)      se redibuja SOLO cuando cambia su clave      (textos, arcos)
+detras(t)    no dibuja nada: coloca piezas ya hechas      (cada fotograma)
+cuadro(t)    igual, pero por encima de la capa            (cada fotograma)
 ```
 
-Por eso el mismo código sirve para la pantalla y para el PNG.
+Colocar una pieza es un `RenderCopyEx`: rotar, escalar y teñir los hace la GPU.
+Una aguja es la misma forma en los 360 grados y un orbe es el mismo disco a
+cualquier tamaño y color, así que no hay ninguna razón para volver a
+rasterizarlos. Un texto que cambia una vez por minuto se redibuja una vez por
+minuto, no treinta veces por segundo.
+
+`detras()` existe por una razón concreta heredada del reloj: en `pulso` los
+orbes viajan **por detrás** de la hora y el choque estalla **por delante**. Sin
+esa separación, el estallido de arriba y el de abajo salían distintos, porque
+tenían textos diferentes detrás.
 
 ## La pila: SDL2, la misma del simulador de conducción
 
@@ -105,16 +113,61 @@ un rig con dos huesos apuntando a la hora y al minuto es literalmente para lo
 que sirve un motor de juego, y resuelve de raíz el problema que nos atascó
 haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
-## Esferas
+## Las quince esferas
 
-| Carpeta | Origen | Qué gana en pantalla grande |
+Están **todas** las del Garmin. Quince nombres, seis módulos:
+
+| Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
-| `reloj/esferas/disco.py` | `Disco/` del Garmin | antialiasing real y **segundero de barrido** |
+| `disco` | `disco` | antialiasing real y **segundero de barrido** |
+| `rosa` | `rosa`, `rosavivid` | la rosa deja de ser un alambre (ver abajo) |
+| `letras` | `letras` | nada que arreglar: ya estaba bien |
+| `orbita` | `orbita` | el orbe **rueda** en vez de saltar de segundo en segundo |
+| `pulso` | `pulso`, `pulsoxl` | la fase sale de la hora, no se acumula (ver abajo) |
+| `digital` | las ocho tipografías | ocho proyectos Connect IQ pasan a ser un módulo |
 
-`disco.py` conserva la geometría exacta de la esfera del reloj, con las medidas
-pasadas a **fracción del radio** para que valga igual en un monitor de 24" que
-en una pantallita de 5". El segundero es nuevo: una esfera Connect IQ se
-redibuja una vez por segundo, así que un barrido continuo era imposible allí.
+Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
+vale para un monitor de 24" o una pantallita de 5". Los números originales
+estaban en píxeles sobre los 454 del Epix, y se conservan divididos por 454
+para que se pueda comprobar de dónde salen.
+
+### Tres cosas que aquí se pudieron arreglar
+
+**El segundero de Disco.** Una esfera Connect IQ se redibuja una vez por
+segundo, así que un barrido continuo era imposible. Aquí el ángulo sale del
+reloj con decimales.
+
+**La estrella de Rosa era un alambre.** En el reloj los flancos de cada punta
+se colocaban a 4,6 grados del eje, medidos desde el centro. Suena razonable y
+no lo es: a la altura del hombro eso son `r_in · sen(4,6°)`, el **8%** del
+radio interior — una punta de dos píxeles de ancho. Ahora el hombro se separa
+una fracción del radio interior en vez de un ángulo, y sale una cometa.
+
+**Los orbes de Pulso ya no se disparan al arrancar.** En el reloj la fase se
+acumulaba fotograma a fotograma, así que al despertar la pantalla los orbes
+corrían unos segundos hasta estabilizarse. Aquí la fase se calcula
+directamente de la hora: no hay nada que acumular ni que desincronizar.
+
+### Dos cosas que aquí no hay
+
+**Pulsómetro.** Un reloj de sobremesa no lleva sensor, así que `pulso` y
+`pulsoxl` usan un valor fijo, ajustable con `--ppm`. Marca la velocidad, el
+tamaño de los orbes y el del estallido, igual que hacía el pulso de verdad.
+
+**Brújula.** `rosa` mira siempre al norte. Tampoco cambia gran cosa: en el
+reloj una esfera Garmin no recibe brújula continua, así que se quedaba fija al
+norte el 95% del tiempo.
+
+### Las tipografías
+
+Cada una lleva **su propio cuerpo**, ajustado a ojo en el Garmin: Rampart 152,
+Barriecito 196, Smokum 208. No son intercambiables — poniéndoles el mismo
+cuerpo a todas, Bangers y Rampart se salen del marco por los dos lados.
+
+Los TTF están en `tipos/`, todos con licencia SIL Open Font (`tipos/OFL.txt`).
+En Connect IQ había que generar un atlas de mapa de bits por cuerpo, porque no
+sabe escalar una fuente en marcha; aquí FreeType rasteriza el TTF al tamaño que
+le pidas, y por eso ocho proyectos caben en un módulo.
 
 ## `modelos/`
 
