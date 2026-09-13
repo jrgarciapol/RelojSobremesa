@@ -106,7 +106,9 @@ main {
   display: grid;
   gap: 10px;
   padding: 14px 18px 18px;
-  align-content: start;
+  align-content: center;
+  justify-content: center;   /* con una sola esfera la rejilla es más
+                                estrecha que el hueco: hay que centrarla */
   justify-items: center;
 }
 .celda { width: 100%; max-width: 100%; position: relative; }
@@ -164,9 +166,9 @@ main { overflow: hidden; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las diecinueve de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin y cuatro de geometría ·
-    abre por la última, <b>hopf</b></span>
+  <span class="sub">Las veinte de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin y cinco de geometría ·
+    abre por la última, <b>superficie</b></span>
 </header>
 
 <div class="mandos">
@@ -175,7 +177,7 @@ main { overflow: hidden; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="19">todas</button>
+    <button id="g15" data-n="20">todas</button>
   </div>
 
   <div class="grupo">
@@ -1001,6 +1003,166 @@ const hopf = {
   }
 };
 
+
+/* =====================================================================
+   superficie — los cortes de `eliptica`, pero ya con su cuerpo.
+
+   Aquellas curvas planas son CORTES de algo, y ese algo existe: como el
+   lazo de parámetros se cierra, la familia barre una superficie de
+   verdad. En geometría algebraica eso es una superficie elíptica.
+
+   La base es un círculo y ese círculo ES la esfera del reloj: el azimut
+   es la hora. Y los números van pintados encima, sobre el plano
+   tangente — por eso los de atrás se ven del revés.
+   ===================================================================== */
+const CORTES = 32, N_RAMA = 80, LARGOS = 15;
+const R_ANILLO = 1.05, ESCALA_S = 0.30, X_TOPE = 2.0;
+const ALTO_NUM = 0.46, R_NUM = 1.60;
+const S_CAM = 4.2, S_ZOOM = 0.62, S_VUELTA = 300, S_CABECEO = 83;
+
+// Cifras de TRAZO. Un glifo rasterizado es un rectángulo de píxeles y pegarlo
+// sobre una superficie curva pediría mapear texturas; estas son polilíneas en
+// una caja de 1 x 2, y puestas en el plano tangente salen pintadas encima.
+const CIFRAS = {
+  "0": [[[.15,.4],[.15,1.6],[.5,2],[.85,1.6],[.85,.4],[.5,0],[.15,.4]]],
+  "1": [[[.15,1.55],[.55,2],[.55,0]],[[.15,0],[.95,0]]],
+  "2": [[[.05,1.6],[.35,2],[.7,2],[.95,1.7],[.95,1.3],[.05,0],[.95,0]]],
+  "3": [[[.08,2],[.9,2],[.42,1.18],[.72,1.18],[.95,.92],[.95,.3],[.68,0],[.2,0],[.02,.25]]],
+  "4": [[[.72,0],[.72,2],[.02,.62],[.98,.62]]],
+  "5": [[[.92,2],[.12,2],[.08,1.18],[.62,1.25],[.95,.95],[.95,.32],[.66,0],[.14,.05]]],
+  "6": [[[.9,1.75],[.6,2],[.28,1.9],[.1,1.35],[.08,.42],[.38,0],[.72,0],[.95,.35],[.9,.82],[.6,1.08],[.22,1],[.08,.72]]],
+  "7": [[[.05,2],[.95,2],[.38,0]],[[.28,.95],[.78,.95]]],
+  "8": [[[.35,1.1],[.1,1.38],[.12,1.78],[.45,2],[.8,1.8],[.85,1.42],[.6,1.12],[.22,.88],[.06,.5],[.3,.02],[.72,.05],[.94,.42],[.78,.85],[.35,1.1]]],
+  "9": [[[.1,.22],[.42,0],[.76,.12],[.92,.62],[.92,1.6],[.62,2],[.28,1.98],[.06,1.62],[.12,1.18],[.45,.95],[.82,1.02],[.92,1.28]]],
+};
+
+function trazosNumero(n) {
+  const txt = String(n), ancho = txt.length * 1 + (txt.length - 1) * 0.22;
+  let x0 = -ancho / 2;
+  const out = [];
+  for (const c of txt) {
+    for (const tr of CIFRAS[c]) out.push(tr.map(([u, v]) => [x0 + u, v - 1]));
+    x0 += 1.22;
+  }
+  return out;
+}
+
+const enAnillo = (az, x, y) => {
+  const rad = R_ANILLO + ESCALA_S * x;
+  return [rad * Math.cos(az), rad * Math.sin(az), ESCALA_S * y];
+};
+
+// Ni la superficie ni los números dependen del instante: el azimut es la HORA.
+// Se construyen una vez.
+const SUP = (() => {
+  const cortes = [], ramas = [];
+  for (let k = 0; k < CORTES; k++) {
+    const fase = k / CORTES, az = 2 * Math.PI * fase;
+    const [a, b] = parametros(fase);
+    const r = raices(a, b, 0);
+    if (!r.length) { cortes.push([fase, null, null]); continue; }
+    const alto = raices(a, b, YTOPE * YTOPE);
+    const tope = Math.min(alto.length ? alto[alto.length - 1] : X_TOPE, X_TOPE);
+    const rama = lazo(a, b, r[r.length - 1], tope, N_RAMA).map(([x, y]) => enAnillo(az, x, y));
+    const ovalo = r.length === 3
+      ? lazo(a, b, r[0], r[1], N_RAMA >> 1).map(([x, y]) => enAnillo(az, x, y)) : null;
+    cortes.push([fase, rama, ovalo]);
+    ramas.push(rama);
+  }
+  // Longitudinales: el punto `i` de cada corte, cosido en un anillo cerrado.
+  // Son las que hacen que se vea una superficie y no una valla de listones.
+  const paso = Math.max(1, Math.floor(ramas[0].length / LARGOS));
+  const largos = [];
+  for (let i = 0; i < ramas[0].length; i += paso)
+    largos.push(ramas.map(r => r[i]).concat([ramas[0][i]]));
+
+  const cifras = [];
+  for (let h = 1; h <= 12; h++) {
+    const az = 2 * Math.PI * (h % 12) / 12;
+    const C = [R_NUM * Math.cos(az), R_NUM * Math.sin(az), 0];
+    const U = [-Math.sin(az), Math.cos(az), 0];
+    for (const tr of trazosNumero(h))
+      cifras.push([h, tr.map(([u, v]) => [C[0] + U[0]*u*ALTO_NUM/2,
+                                          C[1] + U[1]*u*ALTO_NUM/2,
+                                          v*ALTO_NUM/2])]);
+  }
+  return { cortes, largos, cifras };
+})();
+
+const superficie = {
+  familia: "Roboto Mono",
+  dibujar(c, L, t) {
+    const r = L/2, g = L/454, hora = (t/3600) % 12;
+    const giro = 2*Math.PI * t / S_VUELTA;
+    const cab = 0.50 + 0.20 * Math.sin(2*Math.PI * t / S_CABECEO);
+    const ca = Math.cos(giro), sa = Math.sin(giro);
+    const cb = Math.cos(cab), sb = Math.sin(cab);
+
+    const proy = ([X, Y, Z]) => {
+      const x1 = X*ca - Y*sa, y1 = X*sa + Y*ca;
+      const y2 = y1*cb - Z*sb, z2 = y1*sb + Z*cb;
+      const d = y2 + S_CAM, k = 2.7 / Math.max(d, 0.35) * S_ZOOM * r;
+      return [r + x1*k, r - z2*k, d];
+    };
+    const niebla = (d, dur) =>
+      Math.pow(Math.min(Math.max((S_CAM + 1.9 - d) / 3.8, 0), 1), dur);
+
+    const tirar = (pts, tono, sat, base, gan, ancho, alfa, dur) => {
+      c.lineWidth = ancho; c.globalAlpha = alfa;
+      let prev = null;
+      for (const p of pts) {
+        const P = proy(p);
+        if (prev) {
+          c.strokeStyle = hsv(tono, sat, base + gan * niebla(P[2], dur));
+          c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(P[0], P[1]); c.stroke();
+        }
+        prev = P;
+      }
+    };
+
+    c.lineCap = "round"; c.lineJoin = "round";
+
+    for (const pts of SUP.largos) tirar(pts, 0.60, 0.55, 0.08, 0.30, 0.9*g, 0.55, 1.6);
+
+    for (const [fase, rama, ovalo] of SUP.cortes) {
+      const cerca = Math.abs(((fase*12 - hora + 6) % 12) - 6);
+      const viva = Math.max(0, 1 - cerca / 0.5);
+      for (const pts of [rama, ovalo]) {
+        if (!pts) continue;
+        tirar(pts, 0.53 + 0.14*viva, 0.70 - 0.45*viva,
+              0.16*(1 + 1.6*viva), 0.46*(1 + 1.6*viva),
+              (1.1 + 2.2*viva)*g, viva > 0 ? 1 : 0.65, 1.6);
+      }
+    }
+
+    for (const [h, pts] of SUP.cifras) {
+      const esta = ((Math.floor(hora) % 12) || 12) === h;
+      tirar(pts, esta ? 0.11 : 0.55, esta ? 0.42 : 0.14,
+            0.34 * (esta ? 1 : 0.8), 0.66 * (esta ? 1 : 0.8),
+            (esta ? 3.4 : 2.0)*g, 1, 1.4);
+    }
+    c.globalAlpha = 1;
+
+    // El minuto: una cuenta recorriendo el corte de la hora en curso.
+    const k = Math.round(hora / 12 * CORTES) % CORTES;
+    const rama = SUP.cortes[k][1];
+    if (rama) {
+      const P = proy(rama[Math.floor((t/60 % 60)/60 * (rama.length - 1))]);
+      c.strokeStyle = "#FFE9C0"; c.lineWidth = 2.2*g;
+      c.beginPath(); c.arc(P[0], P[1], 6*g, 0, 2*Math.PI); c.stroke();
+    }
+
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${L*40/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "rgba(242,245,248,.88)";
+    c.fillText(`${Math.floor(t/3600) % 12 || 12}:${String(Math.floor(t/60) % 60).padStart(2,"0")}`,
+               L/2, L*0.90);
+    c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "#6E86A0";
+    c.fillText("una vuelta al día, una curva por hora", L/2, L*0.955);
+  }
+};
+
 /* ===================================================================== */
 const ESFERAS = {
   bangers: digital("bangers"), barriecito: digital("barriecito"),
@@ -1009,7 +1171,8 @@ const ESFERAS = {
   letras, londrina: digital("londrina"), orbita,
   pulso: pulso(false), pulsoxl: pulso(true),
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
-  smokum: digital("smokum"), sueellen: digital("sueellen"), toro,
+  smokum: digital("smokum"), sueellen: digital("sueellen"),
+  superficie, toro,
 };
 const NOMBRES = Object.keys(ESFERAS);
 
@@ -1022,7 +1185,7 @@ const NOMBRES = Object.keys(ESFERAS);
 // Va por nombre y no como «la última de la lista», porque la lista está en
 // orden alfabético: `hopf` se coló en medio y la página seguía abriendo por
 // `toro`. Al añadir una esfera, cambiar esta línea.
-const NUEVA = "hopf";
+const NUEVA = "superficie";
 let indice = Math.max(0, NOMBRES.indexOf(NUEVA));
 let cuantas = 4;
 // Reloj virtual. La familia de `eliptica` da una vuelta por HORA y la cámara

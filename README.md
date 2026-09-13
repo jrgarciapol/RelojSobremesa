@@ -201,7 +201,7 @@ haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
 ## Las esferas
 
-Están **todas** las del Garmin, más cuatro nuevas. Diecinueve nombres, nueve módulos:
+Están **todas** las del Garmin, más cinco nuevas. Veinte nombres, diez módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -214,6 +214,7 @@ Están **todas** las del Garmin, más cuatro nuevas. Diecinueve nombres, nueve m
 | `eliptica` | `eliptica`, `finita` | **nuevas**: no vienen del reloj (ver abajo) |
 | `toro` | `toro` | **nueva**: la superficie, en 3D |
 | `hopf` | `hopf` | **nueva**: la fibración de Hopf |
+| `superficie` | `superficie` | **nueva**: los cortes, con cuerpo |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -265,6 +266,32 @@ muere. Es el acontecimiento de la esfera, y pasa una vez por hora.
 No se dibuja una curva sino **las dieciséis últimas**, la de ahora encendida y
 las anteriores apagándose: una sola línea se pierde en una pantalla grande, y
 la familia enseña de dónde viene la forma y hacia dónde va.
+
+**`superficie`** — los cortes de `eliptica`, pero ya con su cuerpo.
+
+`eliptica` pinta la familia de curvas reales como líneas planas. Pero esas
+curvas son **cortes de algo**, y ese algo existe: como el lazo de parámetros se
+cierra, la familia barre una superficie de verdad. En geometría algebraica eso
+tiene nombre —una **superficie elíptica**, una familia de curvas elípticas
+sobre una base— así que no hay que fingirla: se construye.
+
+La base es un círculo, y ese círculo **es la esfera del reloj**. El azimut es
+la hora, el corte en cada azimut es la curva de esa hora, y **los números van
+pintados sobre la superficie**: colocados en su plano tangente, con su
+perspectiva. Por eso los de atrás se ven del revés, que es lo que le pasa a
+algo pintado en una pared curva.
+
+Y se ve lo que en el dibujo plano solo se intuía: al cruzar el discriminante la
+superficie **se pellizca** y suelta un asa. Eso es una fibra singular, y aquí
+está a simple vista.
+
+Dos cosas que hicieron falta. Las cifras son **polilíneas**, no una fuente
+(`reloj/trazos_tipo.py`): un glifo rasterizado es un rectángulo de píxeles y
+pegarlo sobre una superficie curva pediría mapear texturas, que es justo lo que
+este reloj no hace. Y la rama de cada corte sale **siempre con el mismo número
+de puntos**, que es lo que permite coser el punto `i` de un corte con el `i`
+del siguiente: sin esas líneas longitudinales la esfera se lee como una valla
+de listones, no como una superficie.
 
 **`hopf`** — un reloj de eslabones.
 
