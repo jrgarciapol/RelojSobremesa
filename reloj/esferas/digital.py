@@ -57,6 +57,7 @@ class Digital(Esfera):
     COLOR_TIME  = 0xFFFFFF   # blanco puro
     COLOR_GREEN = 0x00FF00   # día de la semana y número del día del mes
     COLOR_MES   = 0x1E9BFF   # acento azul
+    ALFA        = 255        # `eliptica` lo baja para que la curva se vea detrás
 
     def __init__(self, lado):
         Esfera.__init__(self, lado)
@@ -80,7 +81,7 @@ class Digital(Esfera):
         cx = lado / 2.0
 
         lz.texto(cx, lado * Y_WDAY, DIAS[(lt.tm_wday + 1) % 7], self.f_mon,
-                 self.COLOR_GREEN)
+                 self.COLOR_GREEN, self.ALFA)
         self._hora(lz, cx, lado * Y_TIME, hora, minuto)
         self._fecha(lz, cx, lado * Y_DATE, lt.tm_mday, lt.tm_mon)
         return lz.array()
@@ -96,9 +97,9 @@ class Digital(Esfera):
         hueco = lz.ancho_de(":", self.f_time) / 2.0
         x0 = cx - (w_hh + hueco + lz.ancho_de(mm, self.f_time)) / 2.0
 
-        lz.texto(x0, cy, hh, self.f_time, self.COLOR_TIME, anclaje="lm")
-        lz.texto(x0 + w_hh + hueco / 2.0, cy, ":", self.f_time, self.COLOR_TIME)
-        lz.texto(x0 + w_hh + hueco, cy, mm, self.f_time, self.COLOR_TIME, anclaje="lm")
+        lz.texto(x0, cy, hh, self.f_time, self.COLOR_TIME, self.ALFA, "lm")
+        lz.texto(x0 + w_hh + hueco / 2.0, cy, ":", self.f_time, self.COLOR_TIME, self.ALFA)
+        lz.texto(x0 + w_hh + hueco, cy, mm, self.f_time, self.COLOR_TIME, self.ALFA, "lm")
 
     def _fecha(self, lz, cx, cy, dia, mes):
         num, mon = "%d" % dia, MESES[mes - 1]
@@ -106,8 +107,8 @@ class Digital(Esfera):
         hueco = self.lado * HUECO
         x0 = cx - (w_num + hueco + lz.ancho_de(mon, self.f_mon)) / 2.0
 
-        lz.texto(x0, cy, num, self.f_num, self.COLOR_GREEN, anclaje="lm")
-        lz.texto(x0 + w_num + hueco, cy, mon, self.f_mon, self.COLOR_MES, anclaje="lm")
+        lz.texto(x0, cy, num, self.f_num, self.COLOR_GREEN, self.ALFA, "lm")
+        lz.texto(x0 + w_num + hueco, cy, mon, self.f_mon, self.COLOR_MES, self.ALFA, "lm")
 
 
 # Una subclase por tipografía, generadas en el sitio: son idénticas salvo el

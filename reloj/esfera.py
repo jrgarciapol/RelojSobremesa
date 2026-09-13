@@ -14,7 +14,7 @@ puede o no puede pagar.
 
 Orden de pintado:
 
-    fondo -> detras() -> capa -> cuadro()
+    fondo -> trazos() -> detras() -> capa -> cuadro()
 
 `detras()` existe por una razón concreta heredada del reloj: en `pulso` los
 orbes viajan **por detrás** de la hora y el choque estalla **por delante**. Sin
@@ -28,6 +28,17 @@ from collections import namedtuple
 # opacidad. `escala` multiplica el tamaño con que se rasterizó.
 Puesto = namedtuple("Puesto", "pieza x y grados color alfa escala")
 Puesto.__new__.__defaults__ = (0.0, None, 255, 1.0)
+
+# Un trazo: una polilínea calculada en el momento. `puntos` es un array (N, 2)
+# en coordenadas del dial; `color` es un 0xRRGGBB o un array (N, 3) uint8 para
+# que el tono corra a lo largo de la curva.
+#
+# Es la única cosa que NO se rasteriza antes: una curva que cambia de forma no
+# es la misma imagen girada, así que no hay sprite que valga. A cambio, lo que
+# viaja a la tarjeta son unos miles de vértices y no un millón de píxeles —
+# numpy calcula 2.000 puntos en decenas de microsegundos.
+Trazo = namedtuple("Trazo", "puntos color grosor alfa")
+Trazo.__new__.__defaults__ = (2.0, 255)
 
 
 class Esfera:
@@ -71,4 +82,8 @@ class Esfera:
 
     def cuadro(self, t):
         """Piezas que van por ENCIMA de todo."""
+        return ()
+
+    def trazos(self, t):
+        """Polilíneas calculadas en el momento, por DEBAJO de todo lo demás."""
         return ()

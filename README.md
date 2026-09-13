@@ -141,9 +141,15 @@ Zero 2 W puede o no puede pagar:
 fondo()      se rasteriza UNA VEZ y no cambia nunca       (marcas, rosa)
 piezas()     se rasterizan UNA VEZ y luego solo se mueven (agujas, orbes)
 capa(t)      se redibuja SOLO cuando cambia su clave      (textos, arcos)
+trazos(t)    polilíneas calculadas al vuelo               (curvas)
 detras(t)    no dibuja nada: coloca piezas ya hechas      (cada fotograma)
 cuadro(t)    igual, pero por encima de la capa            (cada fotograma)
 ```
+
+`trazos()` es lo único que **no** se rasteriza antes: una curva que cambia de
+forma no es la misma imagen girada, así que no hay sprite que valga. A cambio,
+lo que viaja a la tarjeta son unos miles de vértices y no un millón de píxeles;
+la GPU los convierte en triángulos con el inglete calculado en numpy.
 
 Colocar una pieza es un `RenderCopyEx`: rotar, escalar y teñir los hace la GPU.
 Una aguja es la misma forma en los 360 grados y un orbe es el mismo disco a
@@ -186,9 +192,9 @@ un rig con dos huesos apuntando a la hora y al minuto es literalmente para lo
 que sirve un motor de juego, y resuelve de raíz el problema que nos atascó
 haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
-## Las quince esferas
+## Las esferas
 
-Están **todas** las del Garmin. Quince nombres, seis módulos:
+Están **todas** las del Garmin, más dos nuevas. Diecisiete nombres, siete módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -198,6 +204,7 @@ Están **todas** las del Garmin. Quince nombres, seis módulos:
 | `orbita` | `orbita` | el orbe **rueda** en vez de saltar de segundo en segundo |
 | `pulso` | `pulso`, `pulsoxl` | la fase sale de la hora, no se acumula (ver abajo) |
 | `digital` | las ocho tipografías | ocho proyectos Connect IQ pasan a ser un módulo |
+| `eliptica` | `eliptica`, `finita` | **nuevas**: no vienen del reloj (ver abajo) |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -230,6 +237,61 @@ tamaño de los orbes y el del estallido, igual que hacía el pulso de verdad.
 **Brújula.** `rosa` mira siempre al norte. Tampoco cambia gran cosa: en el
 reloj una esfera Garmin no recibe brújula continua, así que se quedaba fija al
 norte el 95% del tiempo.
+
+## Curvas elípticas
+
+Dos esferas que no vienen del Garmin, inspiradas en el proyecto de Nadir
+Hajouji y Steve Trettel, <https://elliptic-curves.art>.
+
+La conexión con un reloj no es decorativa, es **estructural**: una curva
+elíptica *es* un toro. Sobre los complejos, `E` es el cociente `C/L` de una
+retícula, y un toro son exactamente dos ángulos — que es exactamente lo que es
+un reloj. La ley de grupo de la curva no es más que sumar ángulos.
+
+**`eliptica`** — el lugar real de `y² = x³ + ax + b`, con `(a, b)` recorriendo
+un lazo cerrado, una vuelta por hora. El lazo está elegido para **cruzar el
+discriminante** `4a³ + 27b² = 0`: ahí la curva se pellizca y el óvalo nace o
+muere. Es el acontecimiento de la esfera, y pasa una vez por hora.
+
+No se dibuja una curva sino **las dieciséis últimas**, la de ahora encendida y
+las anteriores apagándose: una sola línea se pierde en una pantalla grande, y
+la familia enseña de dónde viene la forma y hacia dónde va.
+
+**`finita`** — la misma curva sobre `F_p`, recorrida por su ley de grupo:
+`P, 2P, 3P…` uniendo saltos consecutivos con una cuerda. El primo lo pone la
+hora y el coeficiente `a` el minuto, así que son **12 × 60 figuras y ninguna se
+repite**.
+
+### Tres cosas que salieron de mirar el resultado
+
+**Los puntos sueltos no eran nada.** La primera versión dibujaba el conjunto de
+puntos de `E(F_p)`: son del orden de `p`, así que sobre una retícula `p × p` se
+leen como ruido. Lo que hace el dibujo son **las cuerdas**, no los puntos.
+
+**El primer generador que aparece suele ser malo.** A las 5:41 el primer punto
+de la curva sobre `F43` da un recorrido de **cuatro** pasos —una raya— y el
+mejor da **51**. Ahora se buscan todos y se queda el de mayor orden: unos
+milisegundos, una vez por minuto.
+
+**La raya vertical del borde.** El trozo real se dibujaba subiendo por `+y` y
+bajando por `-y`, que es lo que sale escribir. En el óvalo va bien, porque los
+dos extremos son raíces y el salto mide cero; en la rama, que se corta donde
+acaba la ventana, dejaba una barra luminosa pegada al borde. Ahora se entra por
+la rama negativa, se pasa por la raíz y se sale por la positiva: trazo abierto,
+sin segmento de cierre.
+
+### Y una de rendimiento
+
+`eliptica` es la primera esfera que **calcula geometría en cada fotograma** —
+una curva que cambia de forma no es la misma imagen girada, así que no hay
+sprite que valga. Son 6.400 vértices y costaba 3,4 ms por fotograma: unos 34 en
+la Pi, justo el límite de los 30 fps sin margen.
+
+Pero la familia da **una vuelta por hora**: a 30 fps son 108.000 fotogramas por
+vuelta, y entre uno y el siguiente no se mueve nada que se pueda ver.
+Recalculando dos veces por segundo salen 7.200 formas distintas por vuelta —de
+sobra— y el coste medio pasa a **0,17 ms**. Veinte veces menos, sin tocar el
+resultado.
 
 ### Las tipografías
 

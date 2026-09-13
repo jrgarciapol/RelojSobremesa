@@ -38,6 +38,64 @@ def _textura(ren, arr):
     return tex, (w, h)
 
 
+def _tira(pts, grosor):
+    """Convierte una polilínea en una tira de triángulos.
+
+    La GPU no dibuja líneas gruesas: dibuja triángulos. Cada vértice se
+    desplaza a un lado y a otro por la **normal media** de sus dos segmentos
+    —el inglete—, que es lo que evita que las esquinas se abran en las curvas
+    cerradas.
+    """
+    d = np.diff(pts, axis=0)
+    ln = np.maximum(np.hypot(d[:, 0], d[:, 1])[:, None], 1e-6)
+    u = d / ln
+    nseg = np.stack([-u[:, 1], u[:, 0]], axis=1)
+
+    nv = np.empty_like(pts)
+    nv[0], nv[-1] = nseg[0], nseg[-1]
+    nv[1:-1] = nseg[:-1] + nseg[1:]
+    nv /= np.maximum(np.hypot(nv[:, 0], nv[:, 1])[:, None], 1e-6)
+
+    n = len(pts)
+    xy = np.empty((2 * n, 2), np.float32)
+    xy[0::2] = pts + nv * (grosor / 2.0)
+    xy[1::2] = pts - nv * (grosor / 2.0)
+
+    i = np.arange(n - 1) * 2
+    idx = np.empty((n - 1, 6), np.int32)
+    idx[:, 0], idx[:, 1], idx[:, 2] = i, i + 1, i + 2
+    idx[:, 3], idx[:, 4], idx[:, 5] = i + 1, i + 3, i + 2
+    return xy, idx.reshape(-1)
+
+
+def _pintar_trazo(ren, tr, ox, oy):
+    pts = np.asarray(tr.puntos, np.float32)
+    if len(pts) < 2:
+        return
+    pts = pts + np.float32([ox, oy])
+    xy, idx = _tira(pts, tr.grosor)
+
+    col = np.empty((len(xy), 4), np.uint8)
+    if isinstance(tr.color, (int, np.integer)):
+        col[:, 0] = (tr.color >> 16) & 0xFF
+        col[:, 1] = (tr.color >> 8) & 0xFF
+        col[:, 2] = tr.color & 0xFF
+    else:
+        c = np.asarray(tr.color, np.uint8)
+        col[0::2, :3] = c
+        col[1::2, :3] = c
+    col[:, 3] = tr.alfa
+
+    uv = np.zeros_like(xy)
+    sdl2.SDL_RenderGeometryRaw(
+        ren, None,
+        xy.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), 8,
+        col.ctypes.data_as(ctypes.POINTER(sdl2.SDL_Color)), 4,
+        uv.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), 8,
+        len(xy),
+        idx.ctypes.data_as(ctypes.c_void_p), len(idx), 4)
+
+
 def ahora():
     """Segundos desde medianoche, hora local, con decimales."""
     t = time.time()
@@ -185,6 +243,9 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
             sdl2.SDL_RenderClear(ren)
             if m.fondo is not None:
                 sdl2.SDL_RenderCopy(ren, m.fondo, None, ctypes.byref(dst_dial))
+
+            for tr in m.esf.trazos(t):
+                _pintar_trazo(ren, tr, ox, oy)
 
             for p in m.esf.detras(t):
                 poner(p)

@@ -8,7 +8,7 @@ mismos arrays y el mismo orden de pintado que la salida por SDL.
 import math
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 def _teñir(im, color, alfa):
@@ -42,6 +42,26 @@ def _girar_en(im, pivote, grados):
     return cuadro.rotate(-grados, resample=Image.BICUBIC), (R, R)
 
 
+def _pintar_trazo(base, tr):
+    """Aquí no hay GPU ni prisa: se dibuja segmento a segmento con Pillow, que
+    además redondea las uniones."""
+    pts = np.asarray(tr.puntos, float)
+    if len(pts) < 2:
+        return
+    d = ImageDraw.Draw(base, "RGBA")
+    g = max(1, int(round(tr.grosor)))
+    if isinstance(tr.color, (int, np.integer)):
+        c = ((tr.color >> 16) & 0xFF, (tr.color >> 8) & 0xFF, tr.color & 0xFF,
+             int(tr.alfa))
+        d.line([tuple(p) for p in pts], fill=c, width=g, joint="curve")
+    else:
+        col = np.asarray(tr.color, np.uint8)
+        for i in range(len(pts) - 1):
+            r, v, a = col[i]
+            d.line([tuple(pts[i]), tuple(pts[i+1])],
+                   fill=(int(r), int(v), int(a), int(tr.alfa)), width=g)
+
+
 def componer(Clase, lado, t):
     esf = Clase(lado)
     f = esf.fondo()
@@ -65,6 +85,9 @@ def componer(Clase, lado, t):
             im, piv = _girar_en(im, piv, p.grados)
         im = _teñir(im, p.color, p.alfa)
         base.alpha_composite(im, (int(p.x - piv[0]), int(p.y - piv[1])))
+
+    for tr in esf.trazos(t):
+        _pintar_trazo(base, tr)
 
     for p in esf.detras(t):
         poner(p)
