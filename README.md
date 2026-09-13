@@ -1,9 +1,14 @@
 # Reloj de sobremesa / pared
 
-Rama nueva del proyecto: en vez de esferas para el Garmin, **relojes creativos
-para una pantalla grande** (monitor o televisor) movidos por una Raspberry Pi.
+**Relojes creativos para una pantalla grande** (monitor o televisor) movidos
+por una Raspberry Pi.
 
-Lo que cambia respecto al reloj:
+Sale de [`garmin_epic_face_test`](https://github.com/jrgarciapol/garmin_epic_face_test),
+donde viven las 15 esferas para el Garmin Epix Pro. Ese repositorio sigue
+siendo **la fuente**: las esferas de aquí son ports, y cuando hay una duda de
+geometría o de color se mira el `.mc` original.
+
+Lo que cambia al pasar del reloj a la pantalla:
 
 | | Garmin Epix (AMOLED) | Pantalla grande (IPS) |
 |---|---|---|
@@ -18,7 +23,7 @@ tinta, que en el reloj era inviable, aquí es justo la que toca.
 
 ## Cómo se usa
 
-Desde **esta carpeta** (`Sobremesa/`), una sola vez:
+Desde la raíz del repositorio, una sola vez:
 
 ```sh
 pip install -r requirements.txt
@@ -113,6 +118,10 @@ redibuja una vez por segundo, así que un barrido continuo era imposible allí.
 
 ## `modelos/`
 
-La línea del personaje 3D (`Mira2.fbx`) queda aparcada aquí. Necesita una
-sesión con acceso al disco local para las texturas, y —si acaba siendo
-animada— una Pi 4 con Godot.
+La línea del personaje 3D (`Mira2.fbx`) queda aparcada aquí. Necesita dos cosas
+que hoy no hay: una sesión con acceso al disco local, para las cuatro texturas
+que el FBX pide (`BC.psd`, `sborka_03 - Default_Normal.png`, `MG_bc.tga`,
+`MG_nm.tga`), y —si acaba siendo animada— una Pi 4 con Godot.
+
+El modelo es de Pigcraft y va con licencia CC-BY: si llega a usarse, hay que
+acreditarlo.
