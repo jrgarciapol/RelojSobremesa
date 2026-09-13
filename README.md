@@ -201,7 +201,7 @@ haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
 ## Las esferas
 
-Están **todas** las del Garmin, más cinco nuevas. Veinte nombres, diez módulos:
+Están **todas** las del Garmin, más seis nuevas. Veintiún nombres, once módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -215,6 +215,7 @@ Están **todas** las del Garmin, más cinco nuevas. Veinte nombres, diez módulo
 | `toro` | `toro` | **nueva**: la superficie, en 3D |
 | `hopf` | `hopf` | **nueva**: la fibración de Hopf |
 | `superficie` | `superficie` | **nueva**: los cortes, con cuerpo |
+| `grabada` | `grabada` | **nueva**: los números proyectados de verdad |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -292,6 +293,24 @@ este reloj no hace. Y la rama de cada corte sale **siempre con el mismo número
 de puntos**, que es lo que permite coser el punto `i` de un corte con el `i`
 del siguiente: sin esas líneas longitudinales la esfera se lee como una valla
 de listones, no como una superficie.
+
+**`grabada`** — igual que `superficie`, pero con los números **proyectados**.
+
+En `superficie` las cifras están en el plano tangente de un **cilindro** de
+radio fijo que pasa cerca de la superficie. Se le parece mucho —tienen su
+escorzo, las de atrás se ven del revés— pero **flotan**: no tocan la superficie
+más que de casualidad y no se enteran de su forma.
+
+Aquí se dibujan en las **coordenadas propias de la superficie** —la fase, que
+es la hora, y el recorrido a lo largo del corte— y se empujan por la
+parametrización. Así están encima **por construcción**: la siguen donde sube,
+se estiran donde se ensancha y se retuercen donde se pellizca. Que un número se
+deforme al pasar por la fibra singular no es un fallo del dibujo, es la
+superficie.
+
+Las dos coordenadas no están a la misma escala —la vuelta al anillo son unas
+diez unidades de mundo y un corte unas tres— así que con el mismo factor en las
+dos las cifras salen chafadas. Hay un factor por eje.
 
 **`hopf`** — un reloj de eslabones.
 

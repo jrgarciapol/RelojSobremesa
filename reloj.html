@@ -166,9 +166,9 @@ main { overflow: hidden; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las veinte de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin y cinco de geometría ·
-    abre por la última, <b>superficie</b></span>
+  <span class="sub">Las veintiuna de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin y seis de geometría ·
+    abre por la última, <b>grabada</b></span>
 </header>
 
 <div class="mandos">
@@ -177,7 +177,7 @@ main { overflow: hidden; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="20">todas</button>
+    <button id="g15" data-n="21">todas</button>
   </div>
 
   <div class="grupo">
@@ -628,12 +628,20 @@ function parametros(fase) {
 
 // Raíces reales de x³ + ax + (b - c). Por muestreo y bisección: es robusto,
 // cuesta nada y evita los tres casos del método de Cardano.
+//
+// El `fx === 0` no es paranoia. A las 12 en punto los parámetros son a=0.8,
+// b=0, la cúbica es x(x² + 0.8) y su única raíz real es EXACTAMENTE x=0 — que
+// además cae justo en una de las 500 muestras. Buscando solo cambios de signo,
+// esa raíz no existe: f vale cero y no cambia de signo a ningún lado. La cara
+// se quedaba sin curva a las doce, y con ella se caía toda la página.
 function raices(a, b, c) {
   const f = x => x*x*x + a*x + b - c, R = [], N = 500, lo = -4, hi = 4;
   let px = lo, pf = f(lo);
   for (let i = 1; i <= N; i++) {
     const x = lo + (hi - lo) * i / N, fx = f(x);
-    if (pf * fx < 0) {
+    if (fx === 0) {
+      R.push(x);
+    } else if (pf !== 0 && pf * fx < 0) {
       let A = px, B = x;
       for (let k = 0; k < 50; k++) {
         const M = (A + B) / 2;
@@ -1089,7 +1097,8 @@ const SUP = (() => {
   return { cortes, largos, cifras };
 })();
 
-const superficie = {
+function hazSuperficie(cifras) {
+ return {
   familia: "Roboto Mono",
   dibujar(c, L, t) {
     const r = L/2, g = L/454, hora = (t/3600) % 12;
@@ -1135,7 +1144,7 @@ const superficie = {
       }
     }
 
-    for (const [h, pts] of SUP.cifras) {
+    for (const [h, pts] of cifras) {
       const esta = ((Math.floor(hora) % 12) || 12) === h;
       tirar(pts, esta ? 0.11 : 0.55, esta ? 0.42 : 0.14,
             0.34 * (esta ? 1 : 0.8), 0.66 * (esta ? 1 : 0.8),
@@ -1161,7 +1170,60 @@ const superficie = {
     c.fillStyle = "#6E86A0";
     c.fillText("una vuelta al día, una curva por hora", L/2, L*0.955);
   }
-};
+ };
+}
+const superficie = hazSuperficie(SUP.cifras);
+
+/* =====================================================================
+   grabada — igual, pero con los números PROYECTADOS de verdad.
+
+   En `superficie` las cifras están en el plano tangente de un cilindro de
+   radio fijo que pasa cerca: se le parece, pero flotan. Aquí se dibujan en
+   las coordenadas propias de la superficie —(fase, v)— y se empujan por la
+   parametrización, así que están encima por construcción. La siguen donde
+   sube, se estiran donde se ensancha y se retuercen donde se pellizca.
+   ===================================================================== */
+const G_REJILLA = 144;
+// Las dos coordenadas NO están a la misma escala: la vuelta al anillo son unas
+// diez unidades de mundo y un corte unas tres. Con el mismo factor las cifras
+// salen chafadas, anchas y bajas.
+const V_CIFRA = 0.795, ESC_FASE = 0.015, ESC_V = 0.105;
+
+const CIFRAS_GRABADAS = (() => {
+  const malla = [];
+  for (let k = 0; k < G_REJILLA; k++) {
+    const fase = k / G_REJILLA, az = 2 * Math.PI * fase;
+    const [a, b] = parametros(fase);
+    const r = raices(a, b, 0);
+    if (!r.length) { malla.push(malla[malla.length - 1] || []); continue; }
+    const alto = raices(a, b, YTOPE * YTOPE);
+    const tope = Math.min(alto.length ? alto[alto.length - 1] : X_TOPE, X_TOPE);
+    malla.push(lazo(a, b, r[r.length - 1], tope, N_RAMA)
+               .map(([x, y]) => enAnillo(az, x, y)));
+  }
+  const nV = malla[0].length;
+  const mez = (P, Q, f) => [P[0] + (Q[0]-P[0])*f, P[1] + (Q[1]-P[1])*f,
+                            P[2] + (Q[2]-P[2])*f];
+  const en = (fase, v) => {
+    const a = (((fase % 1) + 1) % 1) * G_REJILLA;
+    const i0 = Math.floor(a) % G_REJILLA, i1 = (i0 + 1) % G_REJILLA;
+    const fa = a - Math.floor(a);
+    const b2 = Math.min(Math.max(v, 0), 1) * (nV - 1);
+    const j0 = Math.floor(b2), j1 = Math.min(j0 + 1, nV - 1);
+    const fb = b2 - Math.floor(b2);
+    return mez(mez(malla[i0][j0], malla[i0][j1], fb),
+               mez(malla[i1][j0], malla[i1][j1], fb), fa);
+  };
+  const out = [];
+  for (let h = 1; h <= 12; h++) {
+    const fh = (h % 12) / 12;
+    for (const tr of trazosNumero(h))
+      out.push([h, tr.map(([u, v]) => en(fh + u*ESC_FASE, V_CIFRA + v*ESC_V))]);
+  }
+  return out;
+})();
+
+const grabada = hazSuperficie(CIFRAS_GRABADAS);
 
 /* ===================================================================== */
 const ESFERAS = {
@@ -1172,7 +1234,7 @@ const ESFERAS = {
   pulso: pulso(false), pulsoxl: pulso(true),
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
   smokum: digital("smokum"), sueellen: digital("sueellen"),
-  superficie, toro,
+  superficie, grabada, toro,
 };
 const NOMBRES = Object.keys(ESFERAS);
 
@@ -1185,7 +1247,7 @@ const NOMBRES = Object.keys(ESFERAS);
 // Va por nombre y no como «la última de la lista», porque la lista está en
 // orden alfabético: `hopf` se coló en medio y la página seguía abriendo por
 // `toro`. Al añadir una esfera, cambiar esta línea.
-const NUEVA = "superficie";
+const NUEVA = "grabada";
 let indice = Math.max(0, NOMBRES.indexOf(NUEVA));
 let cuantas = 4;
 // Reloj virtual. La familia de `eliptica` da una vuelta por HORA y la cámara
