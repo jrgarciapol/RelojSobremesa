@@ -22,6 +22,7 @@ _registrar("toro", ["toro"])
 _registrar("hopf", ["hopf"])
 _registrar("superficie", ["superficie"])
 _registrar("grabada", ["grabada"])
+_registrar("pintada", ["pintada"])
 _registrar("letras", ["letras"])
 _registrar("orbita", ["orbita"])
 _registrar("pulso", ["pulso", "pulsoxl"])
@@ -34,7 +35,8 @@ DISPONIBLES = tuple(sorted(CATALOGO))
 # Por familias, que es como se miran cuando se comparan.
 FAMILIAS = (
     ("analógicas", ("disco", "rosa", "rosavivid")),
-    ("geometría", ("grabada", "superficie", "hopf", "toro", "eliptica", "finita")),
+    ("geometría", ("pintada", "grabada", "superficie", "hopf",
+                   "toro", "eliptica", "finita")),
     ("en palabras", ("letras",)),
     ("con movimiento", ("orbita", "pulso", "pulsoxl")),
     ("digitales, por tipografía", ("bangers", "barriecito", "caesar", "honk",

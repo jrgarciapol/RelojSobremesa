@@ -149,6 +149,8 @@ fondo()      se rasteriza UNA VEZ y no cambia nunca       (marcas, rosa)
 piezas()     se rasterizan UNA VEZ y luego solo se mueven (agujas, orbes)
 capa(t)      se redibuja SOLO cuando cambia su clave      (textos, arcos)
 trazos(t)    polilíneas calculadas al vuelo               (curvas)
+texturas()   se rasterizan UNA VEZ y se pegan a triángulos (bandas)
+mallas(t)    triángulos con imagen encima                  (superficies)
 detras(t)    no dibuja nada: coloca piezas ya hechas      (cada fotograma)
 cuadro(t)    igual, pero por encima de la capa            (cada fotograma)
 ```
@@ -201,7 +203,7 @@ haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
 ## Las esferas
 
-Están **todas** las del Garmin, más seis nuevas. Veintiún nombres, once módulos:
+Están **todas** las del Garmin, más siete nuevas. Veintidós nombres, doce módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -216,6 +218,7 @@ Están **todas** las del Garmin, más seis nuevas. Veintiún nombres, once módu
 | `hopf` | `hopf` | **nueva**: la fibración de Hopf |
 | `superficie` | `superficie` | **nueva**: los cortes, con cuerpo |
 | `grabada` | `grabada` | **nueva**: los números proyectados de verdad |
+| `pintada` | `pintada` | **nueva**: una imagen enrollada encima |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -311,6 +314,28 @@ superficie.
 Las dos coordenadas no están a la misma escala —la vuelta al anillo son unas
 diez unidades de mundo y un corte unas tres— así que con el mismo factor en las
 dos las cifras salen chafadas. Hay un factor por eje.
+
+**`pintada`** — una **imagen** pegada sobre la superficie.
+
+`grabada` proyecta bien, pero solo polilíneas: las cifras van a palotes porque
+un glifo de verdad es un rectángulo de píxeles. Aquí se rasteriza **una banda
+desenrollada** —la superficie abierta en plano, como la etiqueta de una lata—
+con las horas en Barriecito, sus marcas de minuto y su raíl, y se vuelve a
+enrollar mapeándola sobre triángulos.
+
+Eso es lo que hace cualquier motor 3D con una textura, y **en la Pi sale
+gratis**: `SDL_RenderGeometryRaw` aceptaba textura y coordenadas `uv` desde el
+principio; lo que faltaba era dárselas en vez de pasarle `None` y ceros. Sobre
+la superficie ya se puede pegar cualquier imagen, no solo tipografía.
+
+La banda va en la **pared exterior de abajo**, no en el ala del borde. La
+cámara mira desde arriba, así que del ala se ve la cara de dentro: la primera
+versión salía impresa por detrás, del revés y en espejo.
+
+En el navegador cuesta más, porque **Canvas 2D no sabe dibujar un triángulo con
+textura**: hay que recortar cada uno y aplicarle la afín a mano. Por eso su
+malla es más basta —72 × 3 cuadros en vez de 192 × 6— y es la única diferencia
+real entre las dos versiones.
 
 **`hopf`** — un reloj de eslabones.
 

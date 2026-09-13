@@ -62,6 +62,58 @@ def _pintar_trazo(base, tr):
                    fill=(int(r), int(v), int(a), int(tr.alfa)), width=g)
 
 
+def _coef_perspectiva(destino, origen):
+    """Los ocho coeficientes que PIL quiere para llevar `destino` a `origen`.
+
+    `Image.transform(..., PERSPECTIVE, ...)` va al revés de lo que uno espera:
+    para cada píxel del destino calcula de dónde sacarlo en el origen. Así que
+    hay que resolver el sistema en ese sentido.
+    """
+    m = []
+    for (x, y), (u, v) in zip(destino, origen):
+        m.append([x, y, 1, 0, 0, 0, -u * x, -u * y])
+        m.append([0, 0, 0, x, y, 1, -v * x, -v * y])
+    b = np.array(origen, np.float64).reshape(8)
+    return np.linalg.solve(np.array(m, np.float64), b)
+
+
+def _pintar_malla(base, tex, ma):
+    """Cada cuadro de la malla, con su trozo de imagen deformado.
+
+    Aquí no hay GPU. Se recorre cuadro a cuadro: se calcula la perspectiva que
+    lleva su rectángulo en la imagen a sus cuatro esquinas en pantalla, y se
+    pega con una máscara. Son cuadros pequeños, así que sale en décimas de
+    segundo — y esto solo se usa para los PNG, no para la pantalla.
+    """
+    if tex is None:
+        return
+    src = Image.fromarray(tex, "RGBA")
+    W, H = src.size
+    xy = np.asarray(ma.xy, float)
+    uv = np.asarray(ma.uv, float) * [W - 1, H - 1]
+    idx = np.asarray(ma.indices).reshape(-1, 3)
+
+    # Los índices vienen por triángulos; se juntan de dos en dos, que es como
+    # se generaron, para poder usar una perspectiva por cuadro.
+    for k in range(0, len(idx) - 1, 2):
+        q = [idx[k][0], idx[k][1], idx[k + 1][1], idx[k][2]]
+        d, o = xy[q], uv[q]
+        x0, y0 = np.floor(d.min(0)).astype(int)
+        x1, y1 = np.ceil(d.max(0)).astype(int)
+        w, h = x1 - x0, y1 - y0
+        if w < 1 or h < 1 or w > 2000 or h > 2000:
+            continue
+        try:
+            c = _coef_perspectiva(d - [x0, y0], o)
+        except np.linalg.LinAlgError:
+            continue
+        trozo = src.transform((w, h), Image.PERSPECTIVE, c, Image.BILINEAR)
+        mascara = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(mascara).polygon([tuple(p - [x0, y0]) for p in d], fill=255)
+        trozo.putalpha(Image.composite(trozo.getchannel("A"), mascara, mascara))
+        base.alpha_composite(trozo, (x0, y0))
+
+
 def componer(Clase, lado, t):
     esf = Clase(lado)
     f = esf.fondo()
@@ -88,6 +140,10 @@ def componer(Clase, lado, t):
 
     for tr in esf.trazos(t):
         _pintar_trazo(base, tr)
+
+    texturas = esf.texturas()
+    for ma in esf.mallas(t):
+        _pintar_malla(base, texturas.get(ma.textura), ma)
 
     for p in esf.detras(t):
         poner(p)

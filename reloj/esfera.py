@@ -9,12 +9,13 @@ puede o no puede pagar.
 
     fondo      se rasteriza UNA VEZ y no cambia nunca      (marcas, rosa)
     piezas     se rasterizan UNA VEZ y luego solo se mueven (agujas, orbes)
+    texturas   se rasterizan UNA VEZ y se pegan sobre triángulos
     capa       se redibuja SOLO cuando cambia su clave      (textos, arcos)
     cuadro     no dibuja nada: coloca piezas ya hechas      (cada fotograma)
 
 Orden de pintado:
 
-    fondo -> trazos() -> detras() -> capa -> cuadro()
+    fondo -> trazos() -> mallas() -> detras() -> capa -> cuadro()
 
 `detras()` existe por una razón concreta heredada del reloj: en `pulso` los
 orbes viajan **por detrás** de la hora y el choque estalla **por delante**. Sin
@@ -39,6 +40,20 @@ Puesto.__new__.__defaults__ = (0.0, None, 255, 1.0)
 # numpy calcula 2.000 puntos en decenas de microsegundos.
 Trazo = namedtuple("Trazo", "puntos color grosor alfa")
 Trazo.__new__.__defaults__ = (2.0, 255)
+
+# Una malla con textura: triángulos que llevan pegada una imagen.
+#
+# Es lo único que permite poner sobre una superficie curva algo que no sea una
+# polilínea — una tipografía de verdad, una fotografía. `xy` son los vértices
+# ya proyectados, `uv` dónde cae cada uno en la imagen (de 0 a 1) e `indices`
+# los triángulos. `color` puede ser un array (N, 3) para modular por vértice,
+# que es como se le mete la niebla de profundidad.
+#
+# En la Pi esto lo hace la tarjeta y sale gratis: `SDL_RenderGeometryRaw` ya
+# aceptaba textura y `uv` desde el principio, solo que hasta ahora se le pasaba
+# `None` y ceros.
+Malla = namedtuple("Malla", "textura xy uv indices color alfa")
+Malla.__new__.__defaults__ = (None, 255)
 
 
 class Esfera:
@@ -86,4 +101,12 @@ class Esfera:
 
     def trazos(self, t):
         """Polilíneas calculadas en el momento, por DEBAJO de todo lo demás."""
+        return ()
+
+    def texturas(self):
+        """{nombre: array RGBA}. Se rasterizan UNA VEZ, como las piezas."""
+        return {}
+
+    def mallas(self, t):
+        """Triángulos con textura, justo por encima de los trazos."""
         return ()

@@ -68,6 +68,33 @@ def _tira(pts, grosor):
     return xy, idx.reshape(-1)
 
 
+def _pintar_malla(ren, tex, ma, ox, oy):
+    """Triángulos con imagen pegada. Lo hace la GPU."""
+    xy = np.ascontiguousarray(np.asarray(ma.xy, np.float32)
+                              + np.float32([ox, oy]))
+    uv = np.ascontiguousarray(np.asarray(ma.uv, np.float32))
+    idx = np.ascontiguousarray(np.asarray(ma.indices, np.int32))
+
+    col = np.empty((len(xy), 4), np.uint8)
+    if ma.color is None:
+        col[:, :3] = 255
+    elif isinstance(ma.color, (int, np.integer)):
+        col[:, 0] = (ma.color >> 16) & 0xFF
+        col[:, 1] = (ma.color >> 8) & 0xFF
+        col[:, 2] = ma.color & 0xFF
+    else:
+        col[:, :3] = np.asarray(ma.color, np.uint8)
+    col[:, 3] = ma.alfa
+
+    sdl2.SDL_RenderGeometryRaw(
+        ren, tex,
+        xy.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), 8,
+        col.ctypes.data_as(ctypes.POINTER(sdl2.SDL_Color)), 4,
+        uv.ctypes.data_as(ctypes.POINTER(ctypes.c_float)), 8,
+        len(xy),
+        idx.ctypes.data_as(ctypes.c_void_p), len(idx), 4)
+
+
 def _pintar_trazo(ren, tr, ox, oy):
     pts = np.asarray(tr.puntos, np.float32)
     if len(pts) < 2:
@@ -122,13 +149,15 @@ class _Montaje:
             arr, piv = dato if isinstance(dato, tuple) else (dato, None)
             tex, (w, h) = _textura(ren, arr)
             self.piezas[n] = (tex, (w, h), piv or (w / 2.0, h / 2.0))
+        self.texturas = {n: _textura(ren, a)[0]
+                         for n, a in self.esf.texturas().items()}
         self.capa = None
         self.clave = object()
 
     def soltar(self):
         for tex, _, _ in self.piezas.values():
             sdl2.SDL_DestroyTexture(tex)
-        for tex in (self.fondo, self.capa):
+        for tex in list(self.texturas.values()) + [self.fondo, self.capa]:
             if tex is not None:
                 sdl2.SDL_DestroyTexture(tex)
 
@@ -262,6 +291,9 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
 
             for tr in m.esf.trazos(t):
                 _pintar_trazo(ren, tr, ox, oy)
+
+            for ma in m.esf.mallas(t):
+                _pintar_malla(ren, m.texturas.get(ma.textura), ma, ox, oy)
 
             for p in m.esf.detras(t):
                 poner(p)
