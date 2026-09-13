@@ -41,9 +41,10 @@ echo   1   Ventana         (empieza en disco, flechas para pasear)
 echo   2   Pantalla completa
 echo.
 echo   3   Elegir una esfera concreta
-echo   4   Ver las quince en un PNG
+echo   4   Ver todas en un PNG
 echo.
-echo   5   Actualizar desde GitHub  (git pull)
+echo   5   Ventana a camara rapida  (una hora cada 6 segundos)
+echo   6   Actualizar desde GitHub  (git pull)
 echo   0   Salir
 echo.
 set "op="
@@ -53,7 +54,8 @@ if "%op%"=="1" goto ventana
 if "%op%"=="2" goto completa
 if "%op%"=="3" goto elegir
 if "%op%"=="4" goto hoja
-if "%op%"=="5" goto actualizar
+if "%op%"=="5" goto rapido
+if "%op%"=="6" goto actualizar
 if "%op%"=="0" exit /b 0
 goto menu
 
@@ -79,6 +81,13 @@ goto menu
 :hoja
 python -m reloj --lamina todas.png --esfera TODAS --lado 440
 if exist todas.png start "" todas.png
+goto menu
+
+:rapido
+rem La familia de eliptica da una vuelta por hora y la camara de toro,
+rem hopf y paseo tarda varios minutos: a velocidad real no hay forma de
+rem juzgar si el movimiento funciona.
+python -m reloj --ventana --velocidad 600
 goto menu
 
 :actualizar

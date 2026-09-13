@@ -45,9 +45,10 @@ python -m reloj --velocidad 600          # una hora de reloj cada 6 segundos
 ```
 
 `--velocidad` no es un juguete: la familia de `eliptica` da una vuelta por
-**hora** y la cámara de `toro` y `hopf` tarda cinco minutos, así que a
-velocidad real no hay forma de juzgar si el movimiento funciona. En la página
-hay los mismos multiplicadores en botones.
+**hora**, la cámara de `toro` y `hopf` tarda cinco minutos y `paseo` cambia de
+curva cada minuto, así que a velocidad real no hay forma de juzgar si el
+movimiento funciona. En la página hay los mismos multiplicadores en botones, y
+en `reloj.bat` es la opción 5.
 
 (En Linux y en la Pi, `python3` en vez de `python`.)
 
@@ -59,7 +60,7 @@ Con la ventana abierta no hace falta volver a la consola para nada:
 | **g** | guardar un PNG de lo que se está viendo |
 | **Esc** o **q** | salir |
 
-Se arranca con **las quince cargadas** y empezando por la que se pida, así que
+Se arranca con **todas cargadas** y empezando por la que se pida, así que
 compararlas es cuestión de ir dando a la flecha. Al cambiar aparece el nombre
 arriba a la izquierda y se apaga solo.
 
@@ -110,8 +111,8 @@ El banco de medida es `python3 utiles/medir.py 1080`.
 
 ## Verlas sin la Raspberry: `reloj.html`
 
-Una reimplementación en Canvas de las quince, en una página suelta. Doble clic
-y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o las quince a la vez,
+Una reimplementación en Canvas de las veintitrés, en una página suelta. Doble
+clic y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o todas a la vez,
 pantalla completa, un cursor para recorrer el día y otro para las pulsaciones.
 
 Sirve para tres cosas que la versión de Python no da:
@@ -266,6 +267,32 @@ y deformarlas para darles volumen sería quitarles lo que las hace reconocibles:
 una cardioide torcida ya no es una cardioide. Así que la curva se queda en su
 plano y lo que sale del plano es el rastro, que se levanta conforme envejece.
 
+**El cometa corre donde la curva se cierra.** No va a velocidad constante: la
+velocidad es proporcional a la curvatura, así que se lanza en los recodos y se
+arrastra en las rectas. Es la intuición kepleriana —en el perihelio, que es
+donde la órbita más se cierra, el planeta va disparado— aunque no sea
+literalmente la ley de áreas: en el afelio también hay curvatura y ahí el
+planeta va lentísimo. Y cumple una función: la gracia de estas curvas está en
+los recodos, y a paso fijo el cometa se los pasaba en dos fotogramas y se
+tiraba el resto del rato recorriendo la asíntota. Una circunferencia, con
+curvatura constante, sigue yendo a paso fijo, que es como tiene que ser.
+
+La curvatura es la de **Menger** —el inverso del radio de la circunferencia que
+pasa por tres puntos seguidos—, que sale de un área y tres distancias sin
+derivar nada. Se normaliza por **percentil**: una cúspide tiene curvatura
+infinita y dividiendo por el máximo todo lo demás quedaría a cero y el cometa
+no se movería.
+
+**La cabeza va por el reloj de curvatura; la cola, por la cinta métrica.** Una
+cola mide lo mismo se vaya rápido o despacio, así que se cuenta en longitud de
+arco. Medida en tiempo se encogía justo en los recodos, que es donde el cometa
+frena y donde más ganas hay de verla.
+
+**La estela sale tangente al plano.** Subía con `edad ** 0.85`, cuya pendiente
+en la cabeza es infinita: la cola salía en perpendicular, como una antena. Con
+el suavizado de Hermite —pendiente cero en los dos extremos— despega rozando la
+curva y luego se levanta.
+
 Tres cosas que salieron de dibujarlas todas y mirarlas:
 
 **Encuadrar por percentiles, no por el mínimo y el máximo.** Con el rango
@@ -283,8 +310,10 @@ de las esferas 3D, unos 26 grados, y a esa altura un plano se ve de canto: una
 cardioide preciosa salía como una raya. A 66 grados se lee entera y aún queda
 escorzo para que se note que hay un plano en el espacio.
 
-Cuesta 0,22 ms por fotograma, unos 2 en la Pi: es la esfera 3D más barata del
-banco, porque la curva del minuto se calcula una vez y luego solo se proyecta.
+Cuesta 0,41 ms por fotograma a 1080, unos 4 en la Pi: es la esfera 3D más
+barata del banco —`pintada` cuesta 27 y `superficie` 34— porque la curva del
+minuto, su curvatura y sus dos acumulados se calculan una vez y luego solo se
+proyecta.
 
 ## Curvas elípticas
 
