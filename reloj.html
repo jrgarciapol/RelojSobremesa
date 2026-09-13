@@ -153,6 +153,7 @@ body.limpio .esferas,
 body.limpio footer,
 body.limpio .nombre { display: none; }
 body.limpio main { padding: 0; gap: 2px; height: 100vh; align-content: center; }
+main { overflow: hidden; }
 
 @media (max-width: 560px) {
   .mandos { gap: 14px; }
@@ -722,7 +723,12 @@ function pasos(P, a, b, p) {
 
 // El generador de MAYOR orden, no el primero que aparezca: a las 5:41 sobre
 // F43 el primero da cuatro pasos —una raya— y el mejor da 51.
-function orbita(p, a, b) {
+//
+// Se llama `recorrido` y no `orbita` porque `orbita` ya es una esfera de este
+// mismo fichero, y dos declaraciones con el mismo nombre en el ámbito global
+// no son un aviso: son un SyntaxError que tumba el script entero antes de
+// ejecutar nada. La página se quedaba en blanco.
+function recorrido(p, a, b) {
   let mejor = [];
   for (let x = 0; x < p; x++) {
     const d = ((x*x*x + a*x + b) % p + p) % p;
@@ -746,7 +752,7 @@ const finita = {
     const p = PRIMOS[hora % 12];
     const clave = p + ":" + minuto;
     if (this.cache.clave !== clave) {
-      this.cache = { clave, pts: orbita(p, minuto, 1) };
+      this.cache = { clave, pts: recorrido(p, minuto, 1) };
     }
     const pts = this.cache.pts;
     const util = L * (1 - 2*this.MARGEN), borde = L * this.MARGEN;
@@ -813,10 +819,29 @@ function visibles() {
   return Array.from({length: cuantas}, (_, i) => NOMBRES[(indice + i) % NOMBRES.length]);
 }
 
-function montar() {
+// La rejilla se dimensiona para CABER: si hay que bajar con la rueda para ver
+// la cuarta esfera, no se están comparando cuatro esferas. El lado de la celda
+// sale del hueco que queda, no del ancho a secas.
+function ajustar() {
   const cols = cuantas === 1 ? 1 : cuantas === 4 ? 2 : cuantas === 9 ? 3 : 6;
-  rejilla.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
-  rejilla.style.maxWidth = cuantas === 1 ? "min(88vh, 100%)" : "none";
+  const filas = Math.ceil(cuantas / cols);
+  const est = getComputedStyle(rejilla);
+  const hueco = parseFloat(est.gap) || 0;
+  // El hueco disponible es el que el navegador ya le ha dado a la rejilla
+  // (`flex: 1` reparte lo que sobra tras cabecera, mandos y pie), menos sus
+  // propios rellenos y separaciones. Calcularlo a mano a partir de la ventana
+  // obliga a acordarse del pie, que va DESPUÉS, y de los dos rellenos; olvidar
+  // uno solo recorta la última fila y la rejilla lo esconde con overflow.
+  const anchoLibre = rejilla.clientWidth - parseFloat(est.paddingLeft)
+                   - parseFloat(est.paddingRight) - hueco * (cols - 1);
+  const altoLibre = rejilla.clientHeight - parseFloat(est.paddingTop)
+                  - parseFloat(est.paddingBottom) - hueco * (filas - 1);
+  const lado = Math.max(90, Math.floor(Math.min(anchoLibre / cols,
+                                                altoLibre / filas)));
+  rejilla.style.gridTemplateColumns = `repeat(${cols}, ${lado}px)`;
+}
+
+function montar() {
   rejilla.innerHTML = "";
   celdas = visibles().map(nombre => {
     const d = document.createElement("div");
@@ -833,7 +858,10 @@ function montar() {
     ch.setAttribute("aria-pressed", String(ch.dataset.n === NOMBRES[indice])));
   document.querySelectorAll(".mandos [data-n]").forEach(b =>
     b.setAttribute("aria-pressed", String(+b.dataset.n === cuantas)));
+  ajustar();
 }
+
+addEventListener("resize", ajustar);
 
 NOMBRES.forEach(n => {
   const b = document.createElement("button");
@@ -874,6 +902,8 @@ function pantallaCompleta() {
 }
 document.addEventListener("fullscreenchange", () => {
   document.body.classList.toggle("limpio", !!document.fullscreenElement);
+  // El cromo desaparece, así que hay más sitio: recalcular o queda cortado.
+  requestAnimationFrame(ajustar);
 });
 
 addEventListener("keydown", e => {
@@ -886,7 +916,7 @@ addEventListener("keydown", e => {
   else if (k === "3") { cuantas = 9; montar(); }
   else if (k === "0") { cuantas = NOMBRES.length; montar(); }
   else if (k === "f") pantallaCompleta();
-  else if (k === "h") document.body.classList.toggle("limpio");
+  else if (k === "h") { document.body.classList.toggle("limpio"); ajustar(); }
   else return;
   e.preventDefault();
 });
