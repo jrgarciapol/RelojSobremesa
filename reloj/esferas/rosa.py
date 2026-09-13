@@ -122,12 +122,14 @@ class Rosa(Esfera):
 
     def _pintar(self, hora, minuto):
         lado, r = self.lado, self.r
-        lz = Lienzo(lado, sup=2)     # sup=2 por el arco; el texto no lo necesita
+        # `sup=1`. El texto ya lo antialiasa FreeType y el arco se calcula, así
+        # que esta capa —que se redibuja cada minuto— no supermuestrea nada.
+        lz = Lienzo(lado, sup=1)
         verde = C_VGREEN if self.VIVID else C_GREEN
 
         if minuto > 0:
-            lz.anillo(r, r, r - lado * M_ARCO, lado * 5 / 454.0, verde,
-                      desde=0, hasta=360.0 * minuto / 60.0)
+            lz.arco(r, r, r - lado * M_ARCO, lado * 5 / 454.0, verde,
+                    desde=0, hasta=360.0 * minuto / 60.0)
 
         self._hora(lz, r, r + lado * DY_TIME, hora, minuto)
 

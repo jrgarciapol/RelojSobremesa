@@ -58,12 +58,17 @@ class _Montaje:
         self.esf = Clase(lado)
         f = self.esf.fondo()
         self.fondo = _textura(ren, f)[0] if f is not None else None
-        self.piezas = {n: _textura(ren, a) for n, a in self.esf.piezas().items()}
+        # Una pieza puede venir sola (gira por su centro) o con su pivote.
+        self.piezas = {}
+        for n, dato in self.esf.piezas().items():
+            arr, piv = dato if isinstance(dato, tuple) else (dato, None)
+            tex, (w, h) = _textura(ren, arr)
+            self.piezas[n] = (tex, (w, h), piv or (w / 2.0, h / 2.0))
         self.capa = None
         self.clave = object()
 
     def soltar(self):
-        for tex, _ in self.piezas.values():
+        for tex, _, _ in self.piezas.values():
             sdl2.SDL_DestroyTexture(tex)
         for tex in (self.fondo, self.capa):
             if tex is not None:
@@ -122,16 +127,19 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
     rot_hasta = time.time() + 2.5
 
     def poner(p):
-        tex, (w, h) = m.piezas[p.pieza]
+        tex, (w, h), (pvx, pvy) = m.piezas[p.pieza]
         w, h = max(1, int(w * p.escala)), max(1, int(h * p.escala))
-        dst = sdl2.SDL_Rect(int(ox + p.x - w / 2.0), int(oy + p.y - h / 2.0), w, h)
+        pvx, pvy = pvx * p.escala, pvy * p.escala
+        # El destino se coloca para que el PIVOTE caiga en (p.x, p.y), y el
+        # giro se hace sobre ese mismo punto.
+        dst = sdl2.SDL_Rect(int(ox + p.x - pvx), int(oy + p.y - pvy), w, h)
         if p.color is None:
             sdl2.SDL_SetTextureColorMod(tex, 255, 255, 255)
         else:
             sdl2.SDL_SetTextureColorMod(tex, (p.color >> 16) & 0xFF,
                                         (p.color >> 8) & 0xFF, p.color & 0xFF)
         sdl2.SDL_SetTextureAlphaMod(tex, int(p.alfa))
-        centro = sdl2.SDL_Point(w // 2, h // 2)
+        centro = sdl2.SDL_Point(int(pvx), int(pvy))
         sdl2.SDL_RenderCopyEx(ren, tex, None, ctypes.byref(dst), p.grados,
                               ctypes.byref(centro), sdl2.SDL_FLIP_NONE)
 

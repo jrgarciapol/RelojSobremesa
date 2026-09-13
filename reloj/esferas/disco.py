@@ -79,11 +79,11 @@ class Disco(Esfera):
         lz = Lienzo(lado)
         lz.circulo(r, r, r * R_PIVOTE, PIVOTE)
         return {
-            "hora": aguja(lado, r * L_HOUR, r * COLA, r * W_HOUR_COLA,
+            "hora": aguja(r * L_HOUR, r * COLA, r * W_HOUR_COLA,
                           r * W_HOUR_CUERPO, K_SH_HOUR, TINTA, BISEL),
-            "minuto": aguja(lado, r * L_MIN, r * COLA, r * W_MIN_COLA,
+            "minuto": aguja(r * L_MIN, r * COLA, r * W_MIN_COLA,
                             r * W_MIN_CUERPO, K_SH_MIN, TINTA, BISEL),
-            "segundo": aguja(lado, r * L_SEG, r * COLA * 1.6, r * W_SEG_COLA,
+            "segundo": aguja(r * L_SEG, r * COLA * 1.6, r * W_SEG_COLA,
                              r * W_SEG_CUERPO, K_SH_SEG, SEGUNDO),
             "pivote": lz.array(),
         }

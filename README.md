@@ -60,6 +60,47 @@ Con `--lamina` no abre pantalla ni toca SDL: compone con Pillow y guarda un
 PNG. Sirve para trabajar el diseño sin tener la Pi delante — y sin la Pi
 siquiera.
 
+## Lo que costaba, medido
+
+Lo de «rasterizar al arrancar y mover en la GPU» estaba bien pensado y **sin
+medir**. Al medirlo a 1080 px, que es el dial de una Pi a 1080p, salieron dos
+cosas que no eran lentitud sino imposibilidad:
+
+| | antes | ahora |
+|---|---|---|
+| `disco`, arranque | 14,5 s | **2,1 s** |
+| `disco`, memoria pico | **914 MB** | **34 MB** |
+| `rosa`, memoria pico | 896 MB | **29 MB** |
+| `rosa`, redibujado por minuto | 722 ms | **43 ms** |
+| cualquiera, por fotograma | — | **≤ 0,05 ms** |
+
+**La Pi Zero 2 W tiene 512 MB.** Con 900 MB de pico no es que fuera lento: no
+arrancaba. (Medido en un Xeon a 2,1 GHz; en la Pi hay que multiplicar los
+tiempos por unos diez. Los megas son los mismos.)
+
+Tres arreglos, y ninguno cambia un solo píxel de lo que se ve:
+
+**Reducir por bandas.** Pasar el lienzo supermuestreado entero a `float32`
+parece lo natural: a 1080 px con `sup=4` son 4320×4320, o sea 300 MB por copia
+y 900 de pico entre las intermedias. Por bandas, el pico ya no depende del
+tamaño del dial.
+
+**Las agujas eran cuadrados casi vacíos.** Poner el pivote en el centro de un
+lienzo del tamaño del dial hace que girarlas sea trivial, y por eso lo hice
+así. Pero una aguja ocupa el **2%** de ese cuadrado: se rasterizaban 18
+millones de píxeles para dibujar unos cientos de miles, y las tres agujas eran
+3,9 s de los 5,1 del arranque. Ahora el sprite es una tira estrecha con su
+pivote donde toca — `SDL_RenderCopyEx` admite un centro de giro cualquiera, así
+que no se pierde nada.
+
+**El arco de Rosa se calcula, no se supermuestrea.** PIL no suaviza `arc`, así
+que la única forma de que saliera limpio era supermuestrear la capa entera —
+una capa que se redibuja **cada minuto**. Eran siete segundos de congelación
+por minuto en la Pi. Calculando la cobertura de cada píxel sale mejor (la rampa
+es exacta, no promediada) y cuesta diecisiete veces menos.
+
+El banco de medida es `python3 utiles/medir.py 1080`.
+
 ## Verlas sin la Raspberry: `reloj.html`
 
 Una reimplementación en Canvas de las quince, en una página suelta. Doble clic

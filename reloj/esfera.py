@@ -45,7 +45,13 @@ class Esfera:
         return None
 
     def piezas(self):
-        """{nombre: (alto, ancho, 4) uint8}. Cada una se coloca por su centro."""
+        """{nombre: array RGBA} o {nombre: (array, (px, py))}.
+
+        Sin pivote, la pieza se coloca y se gira **por su centro**, que es lo
+        que quiere un orbe. Con pivote, por ese punto: así una aguja puede ser
+        una tira estrecha en vez de un cuadrado del tamaño del dial casi
+        entero vacío.
+        """
         return {}
 
     # --- lo que se redibuja de vez en cuando ---

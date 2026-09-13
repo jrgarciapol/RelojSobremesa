@@ -5,6 +5,8 @@ para comparar varias horas o varias esferas de un vistazo. Usa exactamente los
 mismos arrays y el mismo orden de pintado que la salida por SDL.
 """
 
+import math
+
 import numpy as np
 from PIL import Image
 
@@ -24,23 +26,45 @@ def _teñir(im, color, alfa):
     return im
 
 
+def _girar_en(im, pivote, grados):
+    """Gira `im` alrededor de `pivote` y devuelve (imagen, nuevo pivote).
+
+    PIL solo sabe girar sobre el centro, así que primero se centra la pieza en
+    un cuadrado bastante grande para que no se salga nada. SDL no necesita esto
+    —admite un centro de giro cualquiera—, pero aquí no hay prisa.
+    """
+    px, py = pivote
+    R = int(math.ceil(max(math.hypot(x - px, y - py) for x, y in
+                          ((0, 0), (im.width, 0), (0, im.height),
+                           (im.width, im.height))))) + 1
+    cuadro = Image.new("RGBA", (2 * R, 2 * R), (0, 0, 0, 0))
+    cuadro.alpha_composite(im, (R - int(round(px)), R - int(round(py))))
+    return cuadro.rotate(-grados, resample=Image.BICUBIC), (R, R)
+
+
 def componer(Clase, lado, t):
     esf = Clase(lado)
     f = esf.fondo()
     base = (Image.fromarray(f, "RGB").convert("RGBA") if f is not None
             else Image.new("RGBA", (lado, lado), (0, 0, 0, 255)))
-    piezas = esf.piezas()
+    piezas = {}
+    for n, dato in esf.piezas().items():
+        arr, piv = dato if isinstance(dato, tuple) else (dato, None)
+        piezas[n] = (arr, piv)
 
     def poner(p):
-        im = Image.fromarray(piezas[p.pieza], "RGBA")
+        arr, piv = piezas[p.pieza]
+        im = Image.fromarray(arr, "RGBA")
+        if piv is None:
+            piv = (im.width / 2.0, im.height / 2.0)
         if p.escala != 1.0:
             n = (max(1, int(im.width * p.escala)), max(1, int(im.height * p.escala)))
+            piv = (piv[0] * p.escala, piv[1] * p.escala)
             im = im.resize(n, Image.LANCZOS)
         if p.grados:
-            im = im.rotate(-p.grados, resample=Image.BICUBIC, expand=False)
+            im, piv = _girar_en(im, piv, p.grados)
         im = _teñir(im, p.color, p.alfa)
-        base.alpha_composite(im, (int(p.x - im.width / 2.0),
-                                  int(p.y - im.height / 2.0)))
+        base.alpha_composite(im, (int(p.x - piv[0]), int(p.y - piv[1])))
 
     for p in esf.detras(t):
         poner(p)

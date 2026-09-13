@@ -12,6 +12,7 @@ al arrancar**, así que se puede rasterizar a 4x y reducir.
   capas de texto se redibujan en marcha, no al arrancar.
 """
 
+import math
 import os
 from collections import namedtuple
 
@@ -106,40 +107,107 @@ class Lienzo:
         transparentes (que por dentro son negros) tiñen de negro el borde de
         cada forma al promediarlos con los opacos. Sobre fondo negro no se
         notaría, pero no todas las esferas lo son.
+
+        Y va **por bandas**. Convertir el lienzo entero a float32 de golpe
+        parece lo natural y es justo lo que no cabe: a 1080 px con `sup=4` el
+        lienzo interno son 4320x4320, o sea 300 MB por copia y unos 900 MB de
+        pico entre las intermedias. La Pi Zero 2 W tiene **512 MB**, así que
+        no es que fuera lento: es que no arrancaba. Por bandas el pico no
+        depende del tamaño del dial.
         """
-        a = np.asarray(self.im, dtype=np.float32)
-        if self.sup > 1:
+        s = self.sup
+        if s == 1:
+            return np.ascontiguousarray(np.asarray(self.im, dtype=np.uint8))
+
+        out = np.empty((self.alto, self.ancho, 4), np.uint8)
+        # Bandas de unos 8 MB por intermedia, salga el dial del tamaño que salga.
+        filas = max(1, int(8e6 / (self.ancho * s * s * 16)))
+
+        for y0 in range(0, self.alto, filas):
+            y1 = min(self.alto, y0 + filas)
+            a = np.asarray(self.im.crop((0, y0 * s, self.ancho * s, y1 * s)),
+                           dtype=np.float32)
             al = a[:, :, 3:4] / 255.0
             pm = np.concatenate([a[:, :, :3] * al, a[:, :, 3:4]], axis=2)
-            s = self.sup
-            pm = pm.reshape(self.alto, s, self.ancho, s, 4).mean(axis=(1, 3))
+            pm = pm.reshape(y1 - y0, s, self.ancho, s, 4).mean(axis=(1, 3))
             al = pm[:, :, 3:4] / 255.0
             rgb = np.divide(pm[:, :, :3], al, out=np.zeros_like(pm[:, :, :3]),
                             where=al > 1e-4)
-            a = np.concatenate([rgb, pm[:, :, 3:4]], axis=2)
-        return np.ascontiguousarray(np.clip(a + 0.5, 0, 255).astype(np.uint8))
+            out[y0:y1, :, :3] = np.clip(rgb + 0.5, 0, 255).astype(np.uint8)
+            out[y0:y1, :, 3] = np.clip(pm[:, :, 3] + 0.5, 0, 255).astype(np.uint8)
+        return out
+
+    def arco(self, cx, cy, r, grosor, color, desde=0.0, hasta=360.0, alfa=255):
+        """Un arco con antialiasing **calculado**, no supermuestreado.
+
+        PIL no suaviza `arc`, así que la única forma de que el arco de Rosa
+        saliera limpio era supermuestrear la capa entera — y esa capa se
+        redibuja cada minuto. Costaba 0,7 s por minuto en un portátil, o sea
+        unos siete segundos de congelación en la Pi. Cada minuto.
+
+        Aquí se calcula la cobertura de cada píxel a partir de su distancia al
+        anillo y su ángulo. Sale mejor que supermuestreando (la rampa es
+        exacta, no promediada) y permite bajar toda la capa a `sup=1`.
+        """
+        n_y, n_x = self.alto * self.sup, self.ancho * self.sup
+        s = self.sup
+        yy, xx = np.mgrid[0:n_y, 0:n_x].astype(np.float32)
+        dx, dy = xx - cx * s, yy - cy * s
+        d = np.hypot(dx, dy)
+
+        # Rampa de un píxel a cada lado del canto: eso es el antialiasing.
+        cob = np.clip(grosor * s / 2.0 - np.abs(d - r * s) + 0.5, 0.0, 1.0)
+
+        if (hasta - desde) < 360.0:
+            ang = np.degrees(np.arctan2(dx, -dy)) % 360.0
+            margen = np.degrees(1.0 / max(1.0, r * s))   # un píxel, en grados
+            dentro = np.clip((ang - desde) / margen, 0.0, 1.0) \
+                * np.clip((hasta - ang) / margen, 0.0, 1.0)
+            cob *= dentro
+
+        capa = np.zeros((n_y, n_x, 4), np.uint8)
+        capa[:, :, 0] = (color >> 16) & 0xFF
+        capa[:, :, 1] = (color >> 8) & 0xFF
+        capa[:, :, 2] = color & 0xFF
+        capa[:, :, 3] = (cob * alfa).astype(np.uint8)
+        self.im.alpha_composite(Image.fromarray(capa, "RGBA"))
 
 
-def aguja(lado, largo, cola, w_cola, w_cuerpo, k_hombro, tinta, bisel=None):
-    """Una aguja apuntando a las 12, con el pivote en el centro del lienzo.
+def aguja(largo, cola, w_cola, w_cuerpo, k_hombro, tinta, bisel=None, margen=2):
+    """Una aguja apuntando a las 12. Devuelve (array, pivote).
 
     Cinco vértices, igual que en el Garmin: punta · hombro izq · cola izq ·
     cola der · hombro der. De la cola al hombro apenas estrecha; del hombro a
     la punta se afila. El `bisel` es la mitad iluminada, que es lo que finge
     el volumen cuando no hay degradados.
+
+    El lienzo es **justo la aguja**, no el dial entero. Parecía natural darle
+    el tamaño del dial y poner el pivote en el centro —así girarla es girar
+    sobre el centro y no hay nada que calcular— pero una aguja ocupa el 2% de
+    ese cuadrado: a 1080 px se rasterizaban 18 millones de píxeles para dibujar
+    unos cientos de miles, y las tres agujas de Disco costaban 3,9 s de los
+    5,1 del arranque.
+
+    Ahora el sprite es una tira estrecha y el pivote va donde toca. SDL admite
+    un centro de giro arbitrario (`SDL_RenderCopyEx`), así que no se pierde
+    nada.
     """
-    c = lado / 2.0
+    ancho = int(math.ceil(max(w_cola, w_cuerpo))) + 2 * margen
+    alto = int(math.ceil(largo + cola)) + 2 * margen
+    cx = ancho / 2.0
+    cy = margen + largo           # el pivote: la punta queda `largo` más arriba
     ht, hb = w_cola / 2.0, w_cuerpo / 2.0
-    by = c + cola                 # extremo de la cola (hacia abajo)
-    sy = c - largo * k_hombro     # hombro
+    by = cy + cola                # extremo de la cola (hacia abajo)
+    sy = cy - largo * k_hombro    # hombro
 
-    pts = [(c, c - largo), (c + hb, sy), (c + ht, by), (c - ht, by), (c - hb, sy)]
+    pts = [(cx, cy - largo), (cx + hb, sy), (cx + ht, by),
+           (cx - ht, by), (cx - hb, sy)]
 
-    lz = Lienzo(lado)
+    lz = Lienzo(ancho, alto)
     lz.poligono(pts, tinta)
     if bisel is not None:
-        lz.poligono([pts[0], pts[1], pts[2], (c, by)], bisel)
-    return lz.array()
+        lz.poligono([pts[0], pts[1], pts[2], (cx, by)], bisel)
+    return lz.array(), (cx, cy)
 
 
 def disco_blando(lado, dureza=0.62):
