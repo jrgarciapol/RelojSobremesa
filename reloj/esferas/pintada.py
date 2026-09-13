@@ -33,7 +33,10 @@ TEX_ALTO = 288
 # no en el ala del borde. La cámara mira desde arriba, así que del ala se ve la
 # cara de dentro: la banda salía impresa por detrás, del revés y en espejo.
 # En la pared exterior se ve por su cara buena.
-V0, V1 = 0.045, 0.345
+# Más arriba que el borde de abajo: ahí la pared es casi recta y la banda
+# se lee plana. Subida a la cintura, donde el toroide más se curva, la
+# tipografía se dobla y se ve que está pegada a algo.
+V0, V1 = 0.175, 0.470
 NU, NV = 192, 6           # cuadros de la malla: a lo largo y a lo ancho
 
 HUESO = 0xF3E7D3

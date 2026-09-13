@@ -203,7 +203,7 @@ haciéndolo a base de renders de Blender. Pero eso pide Pi 4 como mínimo.
 
 ## Las esferas
 
-Están **todas** las del Garmin, más siete nuevas. Veintidós nombres, doce módulos:
+Están **todas** las del Garmin, más ocho nuevas. Veintitrés nombres, trece módulos:
 
 | Módulo | Esferas | Qué gana en pantalla grande |
 |---|---|---|
@@ -219,6 +219,7 @@ Están **todas** las del Garmin, más siete nuevas. Veintidós nombres, doce mó
 | `superficie` | `superficie` | **nueva**: los cortes, con cuerpo |
 | `grabada` | `grabada` | **nueva**: los números proyectados de verdad |
 | `pintada` | `pintada` | **nueva**: una imagen enrollada encima |
+| `paseo` | `paseo` | **nueva**: las curvas célebres de MacTutor |
 
 Toda la geometría va en **fracción de la pantalla**, así que la misma esfera
 vale para un monitor de 24" o una pantallita de 5". Los números originales
@@ -251,6 +252,39 @@ tamaño de los orbes y el del estallido, igual que hacía el pulso de verdad.
 **Brújula.** `rosa` mira siempre al norte. Tampoco cambia gran cosa: en el
 reloj una esfera Garmin no recibe brújula continua, así que se quedaba fija al
 norte el 95% del tiempo.
+
+## Las curvas célebres
+
+**`paseo`** recorre el índice de MacTutor,
+<https://mathshistory.st-andrews.ac.uk/Curves/>: sesenta y una curvas con
+nombre propio. **Cambia de curva cada minuto** —el índice es el minuto del día
+módulo sesenta y uno— así que en poco más de una hora se han visto todas y
+ninguna se ha repetido. Detrás de la hora, un cometa la recorre dejando estela.
+
+**La dimensión que falta se la pone la estela, no la curva.** Son curvas planas
+y deformarlas para darles volumen sería quitarles lo que las hace reconocibles:
+una cardioide torcida ya no es una cardioide. Así que la curva se queda en su
+plano y lo que sale del plano es el rastro, que se levanta conforme envejece.
+
+Tres cosas que salieron de dibujarlas todas y mirarlas:
+
+**Encuadrar por percentiles, no por el mínimo y el máximo.** Con el rango
+completo mandan las ramas asintóticas: el cisoide, el estrofoide y el folium
+salían como una raya vertical, porque su parte interesante mide uno y su
+asíntota cuarenta. Recortando por el 3% y el 97% se encuadra el grueso y las
+colas se van fuera, que es a donde iban.
+
+**Cinco no entraron.** La concoide de Nicomedes, la kappa, la cruciforme, la
+nariz de bala y el tridente de Newton no se leen se encuadren como se
+encuadren. Un catálogo con cinco palos no es mejor que uno sin ellos.
+
+**La cámara mira el plano casi de frente.** La primera versión usaba el cabeceo
+de las esferas 3D, unos 26 grados, y a esa altura un plano se ve de canto: una
+cardioide preciosa salía como una raya. A 66 grados se lee entera y aún queda
+escorzo para que se note que hay un plano en el espacio.
+
+Cuesta 0,22 ms por fotograma, unos 2 en la Pi: es la esfera 3D más barata del
+banco, porque la curva del minuto se calcula una vez y luego solo se proyecta.
 
 ## Curvas elípticas
 
