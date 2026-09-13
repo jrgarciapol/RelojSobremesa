@@ -166,9 +166,9 @@ main { overflow: hidden; }
 
 <header>
   <h1>Banco de esferas</h1>
-  <span class="sub">Las veintisiete de <b>RelojSobremesa</b>, en marcha ·
-    quince del Garmin, once de geometría y una de curvas célebres ·
-    abre por la última, <b>rotulada</b></span>
+  <span class="sub">Las veintiocho de <b>RelojSobremesa</b>, en marcha ·
+    quince del Garmin, doce de geometría y una de curvas célebres ·
+    abre por la última, <b>pellizco</b></span>
 </header>
 
 <div class="mandos">
@@ -177,7 +177,7 @@ main { overflow: hidden; }
     <button id="g1" data-n="1">1</button>
     <button id="g4" data-n="4">2×2</button>
     <button id="g9" data-n="9">3×3</button>
-    <button id="g15" data-n="27">todas</button>
+    <button id="g15" data-n="28">todas</button>
   </div>
 
   <div class="grupo">
@@ -796,6 +796,113 @@ const rotulada = {
     c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
     c.fillStyle = "#6E86A0";
     c.fillText("las horas, repartidas por el parámetro", L/2, L*0.945);
+  }
+};
+
+/* =====================================================================
+   pellizco — `rotulada`, pero respirando: una vuelta al lazo por minuto.
+
+   `eliptica` tarda UNA HORA en dar la vuelta al lazo de parámetros, y con
+   razón: allí la forma ES el reloj. El precio es que a velocidad real no
+   se mueve nada — medido, en un segundo cambia el 0,67% de los píxeles del
+   dial, y la mitad de eso son las cifras.
+
+   En `rotulada` ese precio ya no hay por qué pagarlo: la hora la da la
+   cuenta sobre la cinta, no la forma. Así que el lazo queda libre y aquí
+   va a UNA VUELTA POR MINUTO, lo que destapa el acontecimiento que
+   `eliptica` esconde. El lazo cruza el discriminante dos veces por vuelta
+   —fases 0,389 y 0,611— y el óvalo vive el 22% del recorrido: un latido,
+   el óvalo se desprende de la rama, vive trece segundos y se reabsorbe.
+
+   La fase arranca en el primer cruce, así que LA CURVA SE PELLIZCA CUANDO
+   CAMBIA EL MINUTO. El segundero es la propia geometría.
+
+   Sesenta curvas a la vista, pero entre un paso y el siguiente cincuenta y
+   nueve son las mismas: van en un anillo y se calcula una por paso.
+   ===================================================================== */
+const PE_VUELTA = 60, PE_FASE_0 = 0.389, PE_POR_SEGUNDO = 12;
+const PE_ESTELA = 60, PE_ESTELA_LEJOS = 22, PE_PASO_VIEJAS = 3;
+
+const pellizco = {
+  familia: "Barriecito",
+  tex: null,
+  anillo: [], paso: null, nEst: 0, pinta: [],
+  dibujar(c, L, t) {
+    const k = L / (X1 - X0), r = L / 2, g = L / 454;
+    const nEst = L >= FINA ? PE_ESTELA : PE_ESTELA_LEJOS;
+    const paso = Math.round(t * PE_POR_SEGUNDO);
+    const forma = (n) => {
+      const [a, b] = parametros((PE_FASE_0 + n/(PE_POR_SEGUNDO*PE_VUELTA)) % 1);
+      return { piezas: trozos(a, b), a, b };
+    };
+
+    if (nEst !== this.nEst) {
+      // El aspecto de cada hueco no cambia nunca: el de delante siempre es el
+      // brillante y el del fondo siempre el apagado.
+      this.pinta = [];
+      for (let i = 0; i < nEst; i++) {
+        const f = 1 - i/(nEst - 1);
+        this.pinta.push([hsv(0.52 + 0.16*f, 0.72, 0.14 + 0.86*Math.pow(1-f, 2.2)),
+                         (1 + 2.4*Math.pow(1-f, 3)), f === 0 ? 1 : 0.75]);
+      }
+      this.paso = null;
+    }
+    const salto = this.paso === null || paso - this.paso <= 0
+                  || paso - this.paso > nEst;
+    if (salto) {                       // arranque, o salto del reloj virtual
+      this.anillo = [];
+      for (let j = nEst - 1; j >= 0; j--) this.anillo.push(forma(paso - j));
+    } else {
+      for (let j = this.paso + 1; j <= paso; j++) this.anillo.push(forma(j));
+      this.anillo = this.anillo.slice(-nEst);
+    }
+    this.nEst = nEst; this.paso = paso;
+
+    c.lineCap = "round"; c.lineJoin = "round";
+    for (let i = 0; i < this.anillo.length; i++) {
+      const [col, ancho, alfa] = this.pinta[i];
+      // Las viejas van apagadas y detrás: no necesitan todos sus puntos.
+      const st = i === this.anillo.length - 1 ? 1 : PE_PASO_VIEJAS;
+      c.strokeStyle = col; c.lineWidth = ancho*g; c.globalAlpha = alfa;
+      for (const pts of this.anillo[i].piezas) {
+        c.beginPath();
+        for (let j = 0; j < pts.length; j += st) {
+          const px = (pts[j][0] - X0)*k, py = r - pts[j][1]*k;
+          j ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.stroke();
+      }
+    }
+    c.globalAlpha = 1;
+
+    // La cinta y la cuenta, sobre la curva de ahora.
+    const ahora = this.anillo[this.anillo.length - 1];
+    if (!ahora.piezas.length) return;
+    if (!this.tex) this.tex = etiqueta(ROT_TEX_W, ROT_TEX_H);
+    const rama = ahora.piezas[ahora.piezas.length - 1];
+    const u = parametroEliptico(rama, ahora.a, ahora.b);
+    const n = L >= FINA ? ROT_MUESTRAS : ROT_MUESTRAS_LEJOS;
+    const xy = [], sc = [];
+    for (let i = 0; i < n; i++) {
+      const j = Math.min(rama.length - 1, Math.round(i*(rama.length - 1)/(n - 1)));
+      xy.push([(rama[j][0] - X0)*k, r - rama[j][1]*k]);
+      sc.push(u[j]);
+    }
+    pintarCinta(c, this.tex, xy, sc, L * ROT_ANCHO);
+
+    const f = (t/3600 % 12) / 12;
+    let j = 0;
+    while (j < u.length - 1 && u[j] < f) j++;
+    cuenta(c, (rama[j][0] - X0)*k, r - rama[j][1]*k, L * ROT_CUENTA, "#FFE9C0");
+
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `${L*46/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "rgba(242,245,248,.92)";
+    c.fillText(`${Math.floor(t/3600) % 12 || 12}:${String(Math.floor(t/60) % 60).padStart(2,"0")}`,
+               L/2, L*0.885);
+    c.font = `${L*17/EPIX}px "Roboto Mono", monospace`;
+    c.fillStyle = "#6E86A0";
+    c.fillText("se pellizca al cambiar el minuto", L/2, L*0.945);
   }
 };
 
@@ -1962,7 +2069,7 @@ const ESFERAS = {
   rampart: digital("rampart"), rosa: rosa(false), rosavivid: rosa(true),
   smokum: digital("smokum"), sueellen: digital("sueellen"),
   superficie, grabada, pintada, paseo, toro, rosca, enlazada,
-  rotulada, bordada,
+  rotulada, pellizco, bordada,
 };
 const NOMBRES = Object.keys(ESFERAS);
 
@@ -1975,7 +2082,7 @@ const NOMBRES = Object.keys(ESFERAS);
 // Va por nombre y no como «la última de la lista», porque la lista está en
 // orden alfabético: `hopf` se coló en medio y la página seguía abriendo por
 // `toro`. Al añadir una esfera, cambiar esta línea.
-const NUEVA = "rotulada";
+const NUEVA = "pellizco";
 let indice = Math.max(0, NOMBRES.indexOf(NUEVA));
 let cuantas = 4;
 // Reloj virtual. La familia de `eliptica` da una vuelta por HORA y la cámara

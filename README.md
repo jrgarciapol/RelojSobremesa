@@ -111,7 +111,7 @@ El banco de medida es `python3 utiles/medir.py 1080`.
 
 ## Verlas sin la Raspberry: `reloj.html`
 
-Una reimplementación en Canvas de las veintisiete, en una página suelta. Doble
+Una reimplementación en Canvas de las veintiocho, en una página suelta. Doble
 clic y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o todas a la vez,
 pantalla completa, un cursor para recorrer el día y otro para las pulsaciones.
 
@@ -517,6 +517,37 @@ La integral se hace por el punto medio de cada tramo: en la raíz `y` vale cero
 y dividir por ella ahí daría infinito. Converge de todas formas —cerca de una
 raíz simple `dx/y` va como `dx/√(x-r)`— y el muestreo por coseno que ya hacía
 `_lazo` es justo el cambio de variable que la alisa.
+
+**`pellizco`** — `rotulada`, pero respirando.
+
+`eliptica` tarda **una hora** en dar la vuelta al lazo de parámetros, y con
+razón: allí la forma **es** el reloj, el azimut del lazo es la hora. El precio
+es que a velocidad real no se mueve nada — medido en el navegador, en un
+segundo cambia el **1,1%** de los píxeles del dial, y buena parte son las
+cifras.
+
+En `rotulada` ese precio ya no hay por qué pagarlo, y esa es toda la idea de
+esta variante. **La hora la da la cuenta sobre la cinta**, no la forma. Así que
+la velocidad del lazo queda libre, y aquí se pone en **una vuelta por minuto**.
+Cambia el **11,5%** de los píxeles por segundo: diez veces más viva, y sin
+tocar ni un color.
+
+Lo que eso destapa es el acontecimiento que `eliptica` esconde. El lazo cruza
+el discriminante **dos veces por vuelta** —en las fases 0,389 y 0,611— y el
+óvalo vive el 22% del recorrido. A una vuelta por hora eso es un nacimiento
+cada media hora y no se ve nunca; a una por minuto es un latido: el óvalo se
+desprende de la rama, vive trece segundos y se reabsorbe. Y la fase arranca
+justo en el primer cruce, así que **la curva se pellizca cuando cambia el
+minuto**: el segundero es la propia geometría.
+
+Dos cosas de rendimiento, y las dos salen de medir y no de mirar. Hay sesenta
+curvas a la vista y entre un paso y el siguiente **cincuenta y nueve son las
+mismas**, una posición más viejas: van en un anillo y se calcula una por paso.
+Y el color de cada hueco del anillo **no cambia nunca**, así que calcularlo
+cada vez costaba —según el perfil— el **75%** del tiempo de la esfera, sesenta
+llamadas a `hsv_arr` para sesenta colores fijos. Con las dos, 0,34 ms por paso
+frente a los 3,97 de la primera versión: la esfera de geometría más barata del
+banco, y la más viva.
 
 **`bordada`** — la ley de grupo sobre `F_p`, bordada en el toro que **es** su
 tablero.

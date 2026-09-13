@@ -1,9 +1,9 @@
 """Catálogo de esferas.
 
-Veintisiete nombres salidos de diecisiete módulos, porque muchas son variantes
-de otra: las ocho `digital` son la misma maquetación con distinta tipografía, y
-`rosavivid`, `pulsoxl`, `finita`, `rosca`, `enlazada`, `rotulada` y `bordada`
-son subclases de su hermana. En el Garmin cada una de las quince originales era un proyecto Connect
+Veintiocho nombres salidos de dieciocho módulos, porque muchas son variantes de
+otra: las ocho `digital` son la misma maquetación con distinta tipografía, y
+`rosavivid`, `pulsoxl`, `finita`, `rosca`, `enlazada`, `rotulada`, `pellizco` y
+`bordada` son subclases de su hermana. En el Garmin cada una de las quince originales era un proyecto Connect
 IQ entero, con su manifiesto y su propio id de app.
 """
 
@@ -20,6 +20,7 @@ def _registrar(modulo, nombres):
 _registrar("disco", ["disco"])
 _registrar("eliptica", ["eliptica", "finita"])
 _registrar("rotulada", ["rotulada"])
+_registrar("pellizco", ["pellizco"])
 _registrar("bordada", ["bordada"])
 _registrar("toro", ["toro"])
 _registrar("rosca", ["rosca"])
@@ -43,7 +44,7 @@ FAMILIAS = (
     ("analógicas", ("disco", "rosa", "rosavivid")),
     ("curvas célebres", ("paseo",)),
     ("geometría", ("pintada", "grabada", "superficie", "enlazada", "hopf",
-                   "rosca", "toro", "rotulada", "eliptica",
+                   "rosca", "toro", "pellizco", "rotulada", "eliptica",
                    "bordada", "finita")),
     ("en palabras", ("letras",)),
     ("con movimiento", ("orbita", "pulso", "pulsoxl")),
