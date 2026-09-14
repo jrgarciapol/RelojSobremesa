@@ -64,8 +64,40 @@ SDL2 tampoco hace falta instalarlo: `pysdl2-dll` trae sus propios binarios
 dentro del paquete de Python.
 
 Y si ya tienes un entorno con esta pila —el del simulador de conducción usa
-exactamente la misma— lo busca y lo reutiliza en vez de montar otro. Para
-forzar uno concreto, `RELOJ_PYTHON=/ruta/al/python ./deck.sh`.
+casi la misma— lo busca y lo reutiliza en vez de montar otro. Lo busca por las
+rutas de siempre y, si no está en ninguna, por su lanzador: `jugar.sh`, que su
+instalador deja en la raíz del proyecto. Para forzar uno concreto,
+`RELOJ_PYTHON=/ruta/al/python ./deck.sh`.
+
+«Casi» la misma: al del simulador le falta **Pillow**, porque aquel no dibuja
+texto y aquí las tipografías y la lámina PNG salen de PIL. Cuando aparece ese
+caso el guion lo dice y ofrece añadir el paquete allí mismo —tres megas— en vez
+de duplicar doscientos montando un entorno entero al lado. Es el entorno de
+otro proyecto, así que pregunta antes.
+
+Si hay que montar uno nuevo, SteamOS pone dos trabas conocidas: trae Python 3
+pero **no `pip`**, y al intentar instalar contra el Python del sistema salta
+`externally-managed-environment` (PEP 668). Ninguna se arregla con
+`--break-system-packages`: el entorno se crea con `--without-pip` —SteamOS
+quita `ensurepip`— y se le inyecta el `get-pip.py` oficial dentro. Eso lo hace
+`deck.sh` solo.
+
+Lo único que una actualización de SteamOS sí puede romper es el propio entorno:
+vive en `/home` y sobrevive, pero enlaza contra el Python de `/usr`, así que si
+la actualización cambia de versión de Python el `.venv` se queda apuntando a lo
+que ya no está. El guion lo detecta, lo dice y lo rehace, que tarda un minuto.
+
+La opción **7** del menú comprueba la pila entera sin abrir pantalla
+—`SDL_VIDEODRIVER=dummy`, que es como se comprobó la instalación del
+simulador— y luego pregunta a la pantalla de verdad qué resolución tiene y qué
+dial sale de ella. Vale por `ssh` y vale para saber si algo se rompió sin tener
+que abrir el reloj a ver qué pasa.
+
+Al elegir intérprete, `deck.sh` deja escrito un `reloj.sh` de tres líneas con
+esa ruta ya resuelta: es el acceso directo del escritorio y es lo que se añade
+a Steam como juego no-Steam si algún día quieres verlo en Modo Juego. (El
+simulador necesitaba pasar por Steam para que la Deck presentara el mando como
+gamepad; el reloj no usa el mando, así que desde Konsole vale igual.)
 
 La pantalla de la Deck es de 1280×800, así que a pantalla completa el dial sale
 de **800 px**: casi el mismo tamaño con el que está medido todo el proyecto.

@@ -19,9 +19,19 @@
 #
 #   RELOJ_PYTHON=/ruta/al/python ./deck.sh
 #
-# Se ejecuta en MODO ESCRITORIO, desde Konsole. La pantalla de la Deck es de
-# 1280x800, así que a pantalla completa el dial sale de 800 px — el mismo
+# El entorno del simulador tiene pysdl2, pysdl2-dll y numpy, pero **no
+# Pillow**: aquel no dibuja texto y aquí las tipografías y la lámina PNG salen
+# de PIL. Si aparece ese caso, el guion lo detecta y ofrece añadir el paquete
+# ahí mismo —tres megas— en vez de montar un entorno nuevo de doscientos.
+#
+# Se ejecuta en MODO ESCRITORIO, desde Konsole. El reloj no usa el mando, así
+# que no hay que darlo de alta en Steam como en el simulador (aquello era para
+# que la Deck presentara el mando como gamepad). La pantalla es de 1280x800:
+# a pantalla completa el dial se queda en min(1280, 800) = 800 px, el mismo
 # tamaño con el que está medido todo el proyecto.
+#
+# Para llevar los archivos a la Deck, `git clone` en /home/deck y `git pull`
+# para actualizar (opción 6 del menú).
 set -u
 
 cd "$(dirname "$0")"
@@ -29,20 +39,23 @@ VENV=".venv"
 
 # ---------------------------------------------------------------- preparar --
 # Se busca un Python que YA sepa importar lo que hace falta antes de crear
-# nada. Quien viene del simulador de conducción ya tiene un entorno con esta
-# misma pila —pysdl2, pysdl2-dll, numpy— y montarle un segundo sería duplicar
-# doscientos megas por gusto.
+# nada. Quien viene del simulador de conducción ya tiene un entorno con casi
+# esta misma pila y montarle un segundo sería duplicar doscientos megas por
+# gusto.
 #
 # Por orden: el que se diga a mano, el que esté activo en esta consola, el
 # `.venv` de esta carpeta, el del simulador si está al lado, y el del sistema.
-sirve() { [ -x "$1" ] && "$1" -c "import sdl2, numpy, PIL" >/dev/null 2>&1; }
+nucleo() { [ -x "$1" ] && "$1" -c "import sdl2, numpy" >/dev/null 2>&1; }
+sirve()  { [ -x "$1" ] && "$1" -c "import sdl2, numpy, PIL" >/dev/null 2>&1; }
 
 # Si se pide uno a mano y no sirve, hay que decirlo: caer en silencio a otro
 # entorno es la forma más rápida de pasarse media hora depurando el que no es.
-if [ -n "${RELOJ_PYTHON:-}" ] && ! sirve "${RELOJ_PYTHON}"; then
+# Que le falte solo Pillow no es "no sirve": eso lo arregla la segunda pasada
+# unas líneas más abajo, y avisar aquí sería asustar por nada.
+if [ -n "${RELOJ_PYTHON:-}" ] && ! nucleo "${RELOJ_PYTHON}"; then
     echo "AVISO: RELOJ_PYTHON=${RELOJ_PYTHON} no vale (no existe, o no importa"
-    echo "       sdl2/numpy/PIL). Sigo buscando otro."
-    "${RELOJ_PYTHON}" -c "import sdl2, numpy, PIL" 2>&1 | tail -3
+    echo "       sdl2/numpy). Sigo buscando otro."
+    "${RELOJ_PYTHON}" -c "import sdl2, numpy" 2>&1 | tail -3
     echo
 fi
 
@@ -59,12 +72,48 @@ for otro in ../CarDrivingSimulator ../cardrivingsimulator \
             "$HOME/CarDrivingSimulator" "$HOME/cardrivingsimulator"; do
     CANDIDATOS+=("$otro/.venv/bin/python" "$otro/venv/bin/python")
 done
+# Si el clon del simulador no está en ninguno de los sitios de arriba, se
+# busca por su lanzador: el instalador deja siempre `jugar.sh` en la raíz del
+# proyecto. Tres niveles desde /home/deck bastan y no se recorre el disco.
+if command -v find >/dev/null 2>&1; then
+    while IFS= read -r lanzador; do
+        CANDIDATOS+=("$(dirname "$lanzador")/.venv/bin/python")
+    done < <(find "$HOME" -maxdepth 3 -name jugar.sh -type f 2>/dev/null)
+fi
 CANDIDATOS+=("$(command -v python3 || true)")
 
 PY=""
 for cand in "${CANDIDATOS[@]}"; do
     if [ -n "$cand" ] && sirve "$cand"; then PY="$cand"; break; fi
 done
+
+# Segunda pasada: un entorno con sdl2 y numpy al que solo le falta Pillow. Es
+# justo el del simulador. Añadirle un paquete es mejor que duplicar la pila,
+# pero es SU entorno: se pregunta antes de tocarlo. El propio, no.
+if [ -z "$PY" ]; then
+    for cand in "${CANDIDATOS[@]}"; do
+        [ -n "$cand" ] || continue
+        nucleo "$cand" || continue
+        echo "Encontrado un entorno con SDL2 y numpy:"
+        echo "    $cand"
+        echo "Le falta Pillow, que es lo que dibuja las tipografias y el PNG."
+        if [ "$cand" = "$VENV/bin/python" ]; then
+            resp=s
+        else
+            read -r -p "  Lo anado ahi? (s/N) " resp
+        fi
+        case "$resp" in
+            s|S|si|SI|Si|y|Y)
+                if "$cand" -m pip install --quiet Pillow && sirve "$cand"; then
+                    PY="$cand"
+                    break
+                fi
+                echo "No se pudo instalar Pillow ahi. Sigo buscando."
+                echo
+                ;;
+        esac
+    done
+fi
 
 if [ -n "$PY" ]; then
     echo "Uso el entorno que ya tienes:  $PY"
@@ -74,16 +123,49 @@ else
         echo "instálalo con el gestor de paquetes de tu distribución."
         exit 1
     fi
+
+    # Un entorno que estaba y ya no arranca casi siempre significa lo mismo:
+    # una actualización de SteamOS cambió la versión de Python del sistema y
+    # el venv, que enlaza contra /usr, se quedó apuntando a lo que ya no está.
+    # No tiene arreglo fino; se rehace, que tarda un minuto.
+    if [ -d "$VENV" ] && [ ! -x "$VENV/bin/python" ]; then
+        echo "Hay un $VENV cuyo Python ya no funciona (típico después de una"
+        echo "actualización de SteamOS: el entorno enlaza con el Python de"
+        echo "/usr). Lo rehago."
+        rm -rf "$VENV"
+    fi
+
     if [ ! -x "$VENV/bin/python" ]; then
         echo "No hay ningún entorno con la pila. Preparo uno aquí dentro..."
-        if ! python3 -m venv "$VENV"; then
-            echo
-            echo "No se pudo crear el entorno virtual. Si la queja es de 'ensurepip':"
-            echo "  python3 -m venv --without-pip $VENV"
-            echo "  curl -sS https://bootstrap.pypa.io/get-pip.py | $VENV/bin/python"
-            exit 1
+        # En SteamOS hay Python 3 pero no pip ni ensurepip, así que `venv` a
+        # secas o falla o sale sin pip. Se intenta lo normal y, si no, se crea
+        # sin pip y se le inyecta el oficial: es lo que hace el instalador del
+        # simulador y está probado en esta misma máquina.
+        if ! python3 -m venv "$VENV" >/dev/null 2>&1 \
+           || [ ! -x "$VENV/bin/pip" ]; then
+            echo "Sin ensurepip (lo normal en SteamOS): lo monto sin pip y se"
+            echo "lo pongo con el get-pip.py oficial."
+            rm -rf "$VENV"
+            if ! python3 -m venv --without-pip "$VENV"; then
+                echo "No se pudo crear el entorno virtual. Mira el error."
+                exit 1
+            fi
+            GETPIP="$(mktemp)"
+            if command -v curl >/dev/null 2>&1; then
+                curl -sS https://bootstrap.pypa.io/get-pip.py -o "$GETPIP"
+            elif command -v wget >/dev/null 2>&1; then
+                wget -qO "$GETPIP" https://bootstrap.pypa.io/get-pip.py
+            else
+                echo "No hay ni curl ni wget para bajar get-pip.py."
+                exit 1
+            fi
+            if ! "$VENV/bin/python" "$GETPIP" --quiet; then
+                echo "No se pudo instalar pip en el entorno."
+                rm -f "$GETPIP"
+                exit 1
+            fi
+            rm -f "$GETPIP"
         fi
-        "$VENV/bin/python" -m pip install --quiet --upgrade pip
     fi
     PY="$VENV/bin/python"
     echo "Instalando dependencias (solo la primera vez)..."
@@ -92,6 +174,18 @@ else
         exit 1
     fi
 fi
+
+# Un lanzador de una línea con el intérprete ya resuelto, para no repetir la
+# búsqueda: sirve para el acceso directo del escritorio y, si algún día quieres
+# verlo en Modo Juego, es lo que se añade a Steam como juego no-Steam.
+cat > reloj.sh <<LANZADOR
+#!/usr/bin/env bash
+# Generado por deck.sh. Pantalla completa, sin menú.
+cd "\$(dirname "\$0")"
+exec "$PY" -m reloj "\$@"
+LANZADOR
+chmod +x reloj.sh
+
 sleep 1
 
 # ------------------------------------------------------------------- menú ---
@@ -103,11 +197,12 @@ while true; do
   ===============================
 
   1   Ventana         (empieza en disco, flechas para pasear)
-  2   Pantalla completa
+  2   Pantalla completa                 (dial de 800 px en la Deck)
   3   Elegir una esfera concreta
   4   Ver todas en un PNG
   5   Pantalla completa a camara rapida  (una hora cada 6 segundos)
   6   Actualizar desde GitHub  (git pull)
+  7   Comprobar la instalacion  (sin abrir pantalla)
   0   Salir
 
 MENU
@@ -133,6 +228,40 @@ MENU
             else
                 echo "No encuentro git. Baja el ZIP desde GitHub y descomprímelo."
             fi
+            read -r -p "  (Intro para seguir) " _
+            ;;
+        # Con los controladores de mentira de SDL se comprueba la pila entera
+        # sin necesidad de pantalla: vale por ssh y vale para saber si algo se
+        # rompió sin tener que abrir el reloj a ver qué pasa.
+        7)  clear
+            echo "  Interprete:  $PY"
+            SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy "$PY" - <<'COMPROBAR'
+import ctypes
+import numpy, PIL, sdl2
+print("  numpy %s   Pillow %s" % (numpy.__version__, PIL.__version__))
+if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) != 0:
+    raise SystemExit("  SDL no arranca: " + sdl2.SDL_GetError().decode())
+print("  SDL %d.%d.%d, driver de video %s"
+      % (sdl2.SDL_MAJOR_VERSION, sdl2.SDL_MINOR_VERSION, sdl2.SDL_PATCHLEVEL,
+         sdl2.SDL_GetCurrentVideoDriver().decode()))
+sdl2.SDL_Quit()
+from reloj.esferas import DISPONIBLES
+print("  %d esferas en el catalogo" % len(DISPONIBLES))
+COMPROBAR
+            echo
+            echo "  Y ahora la pantalla de verdad:"
+            "$PY" - <<'PANTALLA'
+import ctypes
+import sdl2
+if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) != 0:
+    print("  no hay pantalla disponible: " + sdl2.SDL_GetError().decode())
+else:
+    m = sdl2.SDL_DisplayMode()
+    sdl2.SDL_GetCurrentDisplayMode(0, ctypes.byref(m))
+    print("  %dx%d  ->  dial de %d px a pantalla completa"
+          % (m.w, m.h, min(m.w, m.h)))
+    sdl2.SDL_Quit()
+PANTALLA
             read -r -p "  (Intro para seguir) " _
             ;;
         0) exit 0 ;;
