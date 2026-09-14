@@ -37,6 +37,15 @@ VENV=".venv"
 # `.venv` de esta carpeta, el del simulador si está al lado, y el del sistema.
 sirve() { [ -x "$1" ] && "$1" -c "import sdl2, numpy, PIL" >/dev/null 2>&1; }
 
+# Si se pide uno a mano y no sirve, hay que decirlo: caer en silencio a otro
+# entorno es la forma más rápida de pasarse media hora depurando el que no es.
+if [ -n "${RELOJ_PYTHON:-}" ] && ! sirve "${RELOJ_PYTHON}"; then
+    echo "AVISO: RELOJ_PYTHON=${RELOJ_PYTHON} no vale (no existe, o no importa"
+    echo "       sdl2/numpy/PIL). Sigo buscando otro."
+    "${RELOJ_PYTHON}" -c "import sdl2, numpy, PIL" 2>&1 | tail -3
+    echo
+fi
+
 PY=""
 for cand in "${RELOJ_PYTHON:-}" \
             "${VIRTUAL_ENV:-}/bin/python" \
