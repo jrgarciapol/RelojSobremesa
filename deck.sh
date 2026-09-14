@@ -46,14 +46,24 @@ if [ -n "${RELOJ_PYTHON:-}" ] && ! sirve "${RELOJ_PYTHON}"; then
     echo
 fi
 
+# Los candidatos se montan de uno en uno y solo si tienen sentido. Escribirlos
+# como "${VIRTUAL_ENV:-}/bin/python" parece más corto y es un error: con la
+# variable vacía queda "/bin/python", que en muchos sistemas existe, y entonces
+# el guion anuncia que usa "el entorno que ya tienes" señalando a uno que nadie
+# ha elegido.
+CANDIDATOS=()
+[ -n "${RELOJ_PYTHON:-}" ] && CANDIDATOS+=("$RELOJ_PYTHON")
+[ -n "${VIRTUAL_ENV:-}" ] && CANDIDATOS+=("$VIRTUAL_ENV/bin/python")
+CANDIDATOS+=("$VENV/bin/python")
+for otro in ../CarDrivingSimulator ../cardrivingsimulator \
+            "$HOME/CarDrivingSimulator" "$HOME/cardrivingsimulator"; do
+    CANDIDATOS+=("$otro/.venv/bin/python" "$otro/venv/bin/python")
+done
+CANDIDATOS+=("$(command -v python3 || true)")
+
 PY=""
-for cand in "${RELOJ_PYTHON:-}" \
-            "${VIRTUAL_ENV:-}/bin/python" \
-            "$VENV/bin/python" \
-            "../CarDrivingSimulator/.venv/bin/python" \
-            "$HOME/CarDrivingSimulator/.venv/bin/python" \
-            "$(command -v python3 || true)"; do
-    if sirve "$cand"; then PY="$cand"; break; fi
+for cand in "${CANDIDATOS[@]}"; do
+    if [ -n "$cand" ] && sirve "$cand"; then PY="$cand"; break; fi
 done
 
 if [ -n "$PY" ]; then
