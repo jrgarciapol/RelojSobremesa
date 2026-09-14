@@ -135,9 +135,10 @@ textarea { width:100%; height:150px; resize:vertical; line-height:1.45;
       </div>
       <textarea id="json" spellcheck="false"></textarea>
       <div class="aviso" id="aviso"></div>
-      <p class="nota">Copia esto y pégalo en el chat, o guárdalo como
-        <b>curvas.json</b> en la carpeta del proyecto: la esfera lo lee al
-        arrancar, y si no está usa estos mismos valores de partida.</p>
+      <p class="nota"><b>Copiar</b> lo lleva al portapapeles para pegarlo en el
+        chat. <b>Descargar</b> guarda <b>curvas.json</b>, que puesto en la
+        carpeta del proyecto lo lee la esfera al arrancar; si no está, usa
+        estos mismos valores de partida.</p>
     </div>
   </div>
 </div>
@@ -486,14 +487,29 @@ document.getElementById("copiar").addEventListener("click", () => {
     .then(() => decir("Copiado. Pégalo en el chat."))
     .catch(() => decir("Selecciónalo y copia con Ctrl+C."));
 });
-document.getElementById("bajar").addEventListener("click", () => {
-  // Al abrir el fichero desde el disco esto guarda `curvas.json`. Dentro del
-  // visor publicado las descargas están bloqueadas: ahí se usa Copiar.
+// Guardar el fichero. Dos caminos, y no son intercambiables: abriendo esta
+// página desde el disco vale un enlace de toda la vida, pero dentro del visor
+// publicado los enlaces de descarga son inertes y hay que pedírselo al
+// anfitrión, que enseña al usuario una confirmación. Se intenta ese primero y
+// se cae al enlace si aquí no hay anfitrión.
+document.getElementById("bajar").addEventListener("click", async () => {
+  const texto = document.getElementById("json").value;
+  const guardar = window.claude && window.claude.use
+    ? await window.claude.use("downloads").catch(() => null) : null;
+  if (guardar) {
+    try {
+      await guardar.save({filename:"curvas.json", data:texto});
+      decir("Guardado como curvas.json.");
+    } catch (e) {
+      decir(e && e.code === "declined" ? "Cancelado."
+            : "No se pudo guardar: usa Copiar. " + ((e && e.message) || ""));
+    }
+    return;
+  }
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([document.getElementById("json").value],
-                                        {type:"application/json"}));
+  a.href = URL.createObjectURL(new Blob([texto], {type:"application/json"}));
   a.download = "curvas.json"; a.click();
-  decir("Si no ha bajado nada, usa Copiar: el visor publicado bloquea descargas.");
+  decir("Si no ha bajado nada, usa Copiar.");
 });
 document.getElementById("pegar").addEventListener("click", () => {
   try {
