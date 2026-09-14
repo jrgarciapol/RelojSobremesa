@@ -12,6 +12,12 @@ Con la ventana abierta:
     g                    guardar un PNG de lo que se ve
     Esc  o  q            salir
 
+Y con un mando —lanzado desde Steam, la Deck manda gamepad y no teclas:
+
+    cruceta / A / L1-R1  pasar de una esfera a la siguiente
+    X  o  Y              guardar un PNG
+    B                    salir
+
 Y sin abrir pantalla ni tocar SDL, componiendo con Pillow:
 
     python -m reloj --lamina x.png --hora 10:09:38
@@ -39,6 +45,9 @@ def main():
     p.add_argument("--fps", type=int, default=30)
     p.add_argument("--velocidad", type=float, default=1.0,
                    help="multiplica el paso del tiempo (x600: una hora en 6 s)")
+    p.add_argument("--deriva", type=int, default=None, metavar="PX",
+                   help="amplitud del vaivén contra el quemado de OLED "
+                        "(por defecto, el 1%% del lado; 0 lo quita)")
     p.add_argument("--ppm", type=float, default=None,
                    help="pulsaciones por minuto para pulso/pulsoxl (no hay sensor)")
     p.add_argument("--lamina", metavar="PNG",
@@ -84,7 +93,7 @@ def main():
 
     from . import pantalla
     pantalla.correr(nombres, arranque, lado=a.lado, ventana=a.ventana,
-                    fps=a.fps, velocidad=a.velocidad)
+                    fps=a.fps, velocidad=a.velocidad, deriva=a.deriva)
 
 
 if __name__ == "__main__":

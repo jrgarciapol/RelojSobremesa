@@ -15,7 +15,7 @@ Lo que cambia al pasar del reloj a la pantalla:
 | Refresco | **1 fotograma por segundo** | 60 fps, animación de verdad |
 | Píxeles encendidos | techo del 10% en reposo | sin límite |
 | Fondo claro | imposible en Always-On | **gratis**: la retro está encendida igual |
-| Quemado | hay que desplazar el dibujo cada minuto | no aplica en LCD |
+| Quemado | hay que desplazar el dibujo cada minuto | no aplica en LCD — **vuelve a aplicar en OLED** |
 | Rotar un mapa de bits | **no existe** en Connect IQ | una llamada, y por hardware |
 
 O sea que **la baraja de restricciones se invierte**. La estética de papel y
@@ -95,21 +95,54 @@ que abrir el reloj a ver qué pasa.
 
 Al elegir intérprete, `deck.sh` deja escrito un `reloj.sh` de tres líneas con
 esa ruta ya resuelta: es el acceso directo del escritorio y es lo que se añade
-a Steam como juego no-Steam si algún día quieres verlo en Modo Juego. (El
-simulador necesitaba pasar por Steam para que la Deck presentara el mando como
-gamepad; el reloj no usa el mando, así que desde Konsole vale igual.)
+a Steam como juego no-Steam si algún día quieres verlo en Modo Juego.
 
 La pantalla de la Deck es de 1280×800, así que a pantalla completa el dial sale
-de **800 px**: casi el mismo tamaño con el que está medido todo el proyecto.
-Y es **OLED**, que es el panel para el que se dibujaron estas esferas.
+de **784 px** —800 menos lo que se reserva para la deriva, que se cuenta más
+abajo—: casi el mismo tamaño con el que está medido todo el proyecto. Y es
+**OLED**, que es el panel para el que se dibujaron estas esferas.
 
 Con la ventana abierta no hace falta volver a la consola para nada:
 
-| tecla | |
-|---|---|
-| **flechas** o **espacio** | pasar de una esfera a la siguiente |
-| **g** | guardar un PNG de lo que se está viendo |
-| **Esc** o **q** | salir |
+| tecla | mando | |
+|---|---|---|
+| **flechas** o **espacio** | **cruceta**, **A**, **L1**/**R1**, palo | pasar de una esfera a la siguiente |
+| **g** | **X** o **Y** | guardar un PNG de lo que se está viendo |
+| **Esc** o **q** | **B** o **select** | salir |
+
+La columna del mando no es un adorno: **lanzado desde Steam no hay teclado**.
+Steam Input se interpone y lo que le llega a SDL ya no son teclas sino un
+gamepad virtual del 360, así que sin escuchar esos eventos no responde nada —y,
+peor, no hay forma de salir sin el botón STEAM. Lanzado desde Konsole llegan
+las dos cosas. El palo va **por flanco**: hay que soltarlo para que vuelva a
+contar, que si no un empujón mantenido se pasa las veintinueve de un tirón.
+
+### La deriva contra el quemado
+
+La tabla de arriba decía que el quemado «no aplica en LCD». En OLED vuelve a
+aplicar, y un reloj es el caso peor: el desgaste de un OLED es **diferencial**
+—el píxel que lleva horas encendido envejece más que el apagado— y aquí las
+mismas líneas caen siempre en los mismos píxeles, hora tras hora. La huella que
+queda no es una mancha uniforme: es el dibujo del reloj.
+
+El Epix lo resolvía desplazando el dibujo cada minuto. Aquí se hace lo mismo
+pero **sin saltos**: el dial deriva por una figura de Lissajous de periodos
+primos entre sí —397 y 613 segundos—, así que la trayectoria no se cierra y no
+repite posiciones. Medido sobre dos horas de reloj, con 8 px de amplitud pasa
+por **283 posiciones distintas** de las 289 que caben en el cuadrado de 17×17,
+y la velocidad máxima es de **0,127 px/s**: un píxel cada ocho segundos en el
+tramo rápido. A ojo el dial está clavado.
+
+El precio es el tamaño: el dial se encoge lo que se vaya a mover, para que la
+deriva no lo recorte nunca. En la Deck, 800 → **784 px**. Con `--deriva 0` se
+quita y vuelven los 800; con `--deriva 12` se mueve más y el dial es de 776.
+En una ventana es al revés —la ventana crece y el dial pedido se respeta—,
+porque ahí sí hay de dónde sacar los píxeles.
+
+Lo que la deriva **no** arregla es el brillo: mover el dibujo reparte el
+desgaste, no lo evita. Para una pantalla que vaya a estar encendida todo el día
+sigue mereciendo la pena bajar el brillo y dejar que el panel haga sus ciclos
+de compensación, que solo corren cuando está apagada.
 
 Se arranca con **todas cargadas** y empezando por la que se pida, así que
 compararlas es cuestión de ir dando a la flecha. Al cambiar aparece el nombre

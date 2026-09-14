@@ -6,9 +6,21 @@ la pantalla pelada, sin X ni Wayland.
 
 Por fotograma solo hay `RenderCopyEx`: rotar, escalar y teñir los hace la GPU.
 El coste de rasterizar se pagó al arrancar.
+
+Dos cosas más viven aquí y las dos las trajo la Steam Deck:
+
+**Los mandos.** Lanzado desde la consola, la Deck manda sus botones como
+teclas y las flechas funcionan. Lanzado desde Steam —que es lo que hay que
+hacer para verlo en Modo Juego— Steam Input se interpone y lo que llega ya no
+son teclas sino un **gamepad virtual**. Si nadie escucha esos eventos no
+responde nada, y encima no hay forma de salir, porque el teclado tampoco está.
+
+**El desplazamiento contra el quemado.** En OLED el desgaste es diferencial y
+un reloj es el caso peor: las mismas líneas caen siempre en los mismos píxeles.
 """
 
 import ctypes
+import math
 import os
 import time
 
@@ -162,24 +174,180 @@ class _Montaje:
                 sdl2.SDL_DestroyTexture(tex)
 
 
-def _rotulo(ren, texto, lado):
-    """El nombre de la esfera, para enseñarlo un momento al cambiar."""
+def _rotulo(ren, texto, lado, pie=None):
+    """El nombre de la esfera, para enseñarlo un momento al cambiar.
+
+    `pie` es la chuleta de los botones: solo se pone si hay mando, porque con
+    teclado las teclas ya se saben y estorbaría.
+    """
     from .lienzo import Lienzo, tipo
     cuerpo = max(12, lado * 0.045)
-    lz = Lienzo(int(lado * 0.7), int(cuerpo * 2.0), sup=1)
+    alto = cuerpo * (2.9 if pie else 2.0)
+    lz = Lienzo(int(lado * 0.7), int(alto), sup=1)
     lz.texto(4, cuerpo, texto, tipo("RobotoMono-Bold.ttf", cuerpo), 0xFFFFFF,
              anclaje="lm")
+    if pie:
+        lz.texto(4, cuerpo * 2.1, pie,
+                 tipo("RobotoMono-Bold.ttf", cuerpo * 0.46), 0x8FB0C4,
+                 anclaje="lm")
     return _textura(ren, lz.array())
 
 
+# ------------------------------------------------------------------ mandos --
+# Lo que llega por Steam Input es un gamepad virtual del 360, así que con la
+# capa de `GameController` basta y los botones salen ya con nombre. Pero si el
+# aparato no tiene mapeo —un mando raro, o la Deck expuesta en crudo— esa capa
+# no abre nada y hay que caer al joystick pelado: botones y cruceta a secas.
+# La diferencia importa poco para lo que se pide aquí, que son cuatro órdenes.
+_EJE_UMBRAL = 18000         # de los 32767 de un eje: ni el roce ni forcejeando
+
+
+class _Mandos:
+    """Traduce mandos a las cuatro órdenes de la esfera.
+
+    `suceso()` devuelve None, "+1", "-1", "foto" o "salir". Los ejes se tratan
+    por flanco —hay que soltar el palo para que vuelva a contar— porque si no,
+    un empujón mantenido pasa las veintinueve esferas de un tirón.
+    """
+
+    def __init__(self):
+        self.pads = {}          # id de instancia -> (handle, es_controller)
+        self.eje = {}           # id de instancia -> -1, 0, +1
+        for i in range(sdl2.SDL_NumJoysticks()):
+            self.abrir(i)
+
+    def hay(self):
+        return bool(self.pads)
+
+    def abrir(self, indice):
+        if sdl2.SDL_IsGameController(indice):
+            h = sdl2.SDL_GameControllerOpen(indice)
+            if not h:
+                return
+            iid = sdl2.SDL_JoystickInstanceID(
+                sdl2.SDL_GameControllerGetJoystick(h))
+            self.pads[iid] = (h, True)
+        else:
+            h = sdl2.SDL_JoystickOpen(indice)
+            if not h:
+                return
+            self.pads[sdl2.SDL_JoystickInstanceID(h)] = (h, False)
+
+    def cerrar(self, iid):
+        par = self.pads.pop(iid, None)
+        if par is None:
+            return
+        h, es_controller = par
+        if es_controller:
+            sdl2.SDL_GameControllerClose(h)
+        else:
+            sdl2.SDL_JoystickClose(h)
+
+    def soltar(self):
+        for iid in list(self.pads):
+            self.cerrar(iid)
+
+    # ---------- eventos ----------
+    def suceso(self, ev):
+        t = ev.type
+        if t == sdl2.SDL_CONTROLLERDEVICEADDED:
+            self.abrir(ev.cdevice.which)
+        elif t == sdl2.SDL_JOYDEVICEADDED:
+            if not sdl2.SDL_IsGameController(ev.jdevice.which):
+                self.abrir(ev.jdevice.which)
+        elif t in (sdl2.SDL_CONTROLLERDEVICEREMOVED, sdl2.SDL_JOYDEVICEREMOVED):
+            self.cerrar(ev.jdevice.which)
+        elif t == sdl2.SDL_CONTROLLERBUTTONDOWN:
+            return self._boton(ev.cbutton.button)
+        elif t == sdl2.SDL_CONTROLLERAXISMOTION:
+            if ev.caxis.axis in (sdl2.SDL_CONTROLLER_AXIS_LEFTX,
+                                 sdl2.SDL_CONTROLLER_AXIS_RIGHTX):
+                return self._palo(ev.caxis.which, ev.caxis.value)
+        elif t == sdl2.SDL_JOYBUTTONDOWN:
+            if self._crudo(ev.jbutton.which):
+                return self._boton_crudo(ev.jbutton.button)
+        elif t == sdl2.SDL_JOYHATMOTION:
+            if self._crudo(ev.jhat.which):
+                if ev.jhat.value & (sdl2.SDL_HAT_RIGHT | sdl2.SDL_HAT_DOWN):
+                    return "+1"
+                if ev.jhat.value & (sdl2.SDL_HAT_LEFT | sdl2.SDL_HAT_UP):
+                    return "-1"
+        elif t == sdl2.SDL_JOYAXISMOTION:
+            if self._crudo(ev.jaxis.which) and ev.jaxis.axis == 0:
+                return self._palo(ev.jaxis.which, ev.jaxis.value)
+        return None
+
+    def _crudo(self, iid):
+        """Solo los que no son `GameController`: si lo son, sus eventos ya
+        llegan por el otro lado y atenderlos dos veces sería contar doble."""
+        par = self.pads.get(iid)
+        return par is not None and not par[1]
+
+    def _boton(self, b):
+        if b in (sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
+                 sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN,
+                 sdl2.SDL_CONTROLLER_BUTTON_A,
+                 sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER):
+            return "+1"
+        if b in (sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT,
+                 sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP,
+                 sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER):
+            return "-1"
+        if b in (sdl2.SDL_CONTROLLER_BUTTON_B,
+                 sdl2.SDL_CONTROLLER_BUTTON_BACK):
+            return "salir"
+        if b in (sdl2.SDL_CONTROLLER_BUTTON_X,
+                 sdl2.SDL_CONTROLLER_BUTTON_Y):
+            return "foto"
+        return None
+
+    def _boton_crudo(self, b):
+        """Sin mapeo no hay nombres, solo números. El orden de los cuatro
+        botones de cara es el de siempre: A, B, X, Y."""
+        return {0: "+1", 1: "salir", 2: "foto", 3: "foto"}.get(b)
+
+    def _palo(self, iid, valor):
+        lado = 0 if abs(valor) < _EJE_UMBRAL else (1 if valor > 0 else -1)
+        if lado == self.eje.get(iid, 0):
+            return None
+        self.eje[iid] = lado
+        return {1: "+1", -1: "-1"}.get(lado)
+
+
+# ------------------------------------------------- deriva contra el quemado --
+# En OLED el desgaste es diferencial: el píxel que lleva horas encendido
+# envejece más que el que está apagado, y un reloj es el caso peor porque las
+# mismas líneas caen siempre en los mismos píxeles. El Epix lo resolvía
+# desplazando el dibujo cada minuto; aquí se hace lo mismo pero sin saltos.
+#
+# El dial deriva por una figura de Lissajous de periodos **primos entre sí**,
+# así que la trayectoria no se cierra y no repite posiciones. Con 8 px de
+# amplitud la velocidad máxima es 2*pi*8/397 = 0,13 px/s: a ojo el dial está
+# clavado, y aun así ningún píxel conserva el mismo contenido más de unos
+# segundos. El dial se encoge lo justo para que la deriva nunca lo recorte.
+DERIVA = (397.0, 613.0)     # segundos de cada eje
+DERIVA_POR_MIL = 10         # amplitud por defecto, en milésimas del lado
+
+
+def _deriva(t, amplitud):
+    """Cuánto se corre el dial en este instante, en píxeles enteros."""
+    if amplitud <= 0:
+        return 0, 0
+    return (int(round(amplitud * math.sin(2 * math.pi * t / DERIVA[0]))),
+            int(round(amplitud * math.sin(2 * math.pi * t / DERIVA[1]))))
+
+
 def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
-           guardar_en=".", velocidad=1.0):
+           guardar_en=".", velocidad=1.0, deriva=None):
     """Muestra `nombres[indice]` y deja pasear por el resto con las flechas.
 
     `velocidad` multiplica el paso del tiempo. No es un juguete: la familia de
     `eliptica` da una vuelta por HORA y la cámara del toro tarda cinco minutos,
     así que a velocidad real no hay forma de juzgar si el movimiento funciona.
     A x600 la vuelta entera dura seis segundos.
+
+    `deriva` es la amplitud en píxeles del vaivén contra el quemado; None la
+    saca del tamaño de la pantalla y 0 lo desactiva.
     """
     from .esferas import cargar
 
@@ -188,6 +356,10 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
 
     if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) != 0:
         raise SystemExit(sdl2.SDL_GetError().decode())
+    # Los mandos aparte y sin dar por muerto el reloj si fallan: sin udev, o
+    # dentro de según qué contenedor, el subsistema no abre y el teclado sigue
+    # valiendo. Quedarse sin esferas por no poder abrir un mando sería absurdo.
+    sdl2.SDL_InitSubSystem(sdl2.SDL_INIT_GAMECONTROLLER)
 
     # Filtrado bilineal: sin esto la rotación de las agujas sale a escalones y
     # se pierde justo el antialiasing que fuimos a buscar.
@@ -195,14 +367,25 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
 
     modo = sdl2.SDL_DisplayMode()
     sdl2.SDL_GetCurrentDisplayMode(0, ctypes.byref(modo))
+    if deriva is None:
+        deriva = int(round(min(modo.w, modo.h) * DERIVA_POR_MIL / 1000.0))
+    deriva = max(0, int(deriva))
+
     if ventana:
+        # La ventana crece lo que se vaya a mover, así que el dial pedido sale
+        # del tamaño pedido: `--lado 800` siguen siendo 800 px de dial.
         lado = lado or 800
-        ancho = alto = lado
+        ancho = alto = lado + 2 * deriva
         flags = 0
     else:
         ancho, alto = modo.w, modo.h
-        lado = lado or min(ancho, alto)
+        # Y aquí al revés, porque la pantalla no da de sí: el dial se encoge lo
+        # que haga falta. En la Deck, 800 - 16 = 784 px.
+        lado = lado or (min(ancho, alto) - 2 * deriva)
         flags = sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
+    # Con un `--lado` a mano puede no quedar sitio para todo el vaivén; se
+    # recorta al hueco que haya en vez de sacar el dial de la pantalla.
+    deriva = max(0, min(deriva, (ancho - lado) // 2, (alto - lado) // 2))
 
     win = sdl2.SDL_CreateWindow(b"reloj", sdl2.SDL_WINDOWPOS_CENTERED,
                                 sdl2.SDL_WINDOWPOS_CENTERED, ancho, alto, flags)
@@ -210,7 +393,8 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
         win, -1, sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC)
     sdl2.SDL_ShowCursor(sdl2.SDL_DISABLE)
 
-    ox, oy = (ancho - lado) // 2, (alto - lado) // 2
+    ox0, oy0 = (ancho - lado) // 2, (alto - lado) // 2
+    ox, oy = ox0, oy0
     dst_dial = sdl2.SDL_Rect(ox, oy, lado, lado)
     ev = sdl2.SDL_Event()
     espera = 1.0 / fps
@@ -219,9 +403,12 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
     # rápido. A x1 es la hora de verdad.
     t_virtual, t_real = ahora(), time.time()
 
+    mandos = _Mandos()
+    pie = "A / cruceta cambia    B sale    X guarda" if mandos.hay() else None
+
     m = _Montaje(ren, cargar(nombres[indice]), lado)
-    rot, rot_wh = _rotulo(ren, nombres[indice], lado)
-    rot_hasta = time.time() + 2.5
+    rot, rot_wh = _rotulo(ren, nombres[indice], lado, pie)
+    rot_hasta = time.time() + (4.0 if pie else 2.5)
 
     def poner(p):
         tex, (w, h), (pvx, pvy) = m.piezas[p.pieza]
@@ -246,7 +433,7 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
         m.soltar()
         sdl2.SDL_DestroyTexture(rot)
         m = _Montaje(ren, cargar(nombres[indice]), lado)
-        rot, rot_wh = _rotulo(ren, nombres[indice], lado)
+        rot, rot_wh = _rotulo(ren, nombres[indice], lado, pie)
         rot_hasta = time.time() + 2.5
 
     def foto():
@@ -264,16 +451,25 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
             while sdl2.SDL_PollEvent(ctypes.byref(ev)):
                 if ev.type == sdl2.SDL_QUIT:
                     return
-                if ev.type != sdl2.SDL_KEYDOWN:
+                if ev.type == sdl2.SDL_KEYDOWN:
+                    k = ev.key.keysym.sym
+                    if k in (sdl2.SDLK_ESCAPE, sdl2.SDLK_q):
+                        return
+                    if k in (sdl2.SDLK_RIGHT, sdl2.SDLK_DOWN, sdl2.SDLK_SPACE):
+                        cambiar(+1)
+                    elif k in (sdl2.SDLK_LEFT, sdl2.SDLK_UP):
+                        cambiar(-1)
+                    elif k == sdl2.SDLK_g:
+                        foto()
                     continue
-                k = ev.key.keysym.sym
-                if k in (sdl2.SDLK_ESCAPE, sdl2.SDLK_q):
+                orden = mandos.suceso(ev)
+                if orden == "salir":
                     return
-                if k in (sdl2.SDLK_RIGHT, sdl2.SDLK_DOWN, sdl2.SDLK_SPACE):
+                if orden == "+1":
                     cambiar(+1)
-                elif k in (sdl2.SDLK_LEFT, sdl2.SDLK_UP):
+                elif orden == "-1":
                     cambiar(-1)
-                elif k == sdl2.SDLK_g:
+                elif orden == "foto":
                     foto()
 
             if hora is not None:
@@ -283,6 +479,12 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
                 t_virtual = (t_virtual + (r - t_real) * velocidad) % 86400.0
                 t_real = r
                 t = t_virtual
+
+            # La deriva va con el reloj de la pared, no con el virtual: a x600
+            # el vaivén se vería, y lo que se quiere es justo lo contrario.
+            dx, dy = _deriva(time.time(), deriva)
+            ox, oy = ox0 + dx, oy0 + dy
+            dst_dial.x, dst_dial.y = ox, oy
 
             sdl2.SDL_SetRenderDrawColor(ren, 0, 0, 0, 255)
             sdl2.SDL_RenderClear(ren)
@@ -321,6 +523,7 @@ def correr(nombres, indice=0, lado=None, ventana=False, fps=30, hora=None,
             sdl2.SDL_RenderPresent(ren)
             time.sleep(espera)
     finally:
+        mandos.soltar()
         m.soltar()
         sdl2.SDL_DestroyTexture(rot)
         sdl2.SDL_DestroyRenderer(ren)
