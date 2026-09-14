@@ -377,27 +377,49 @@ en la cabeza es infinita: la cola salía en perpendicular, como una antena. Con
 el suavizado de Hermite —pendiente cero en los dos extremos— despega rozando la
 curva y luego se levanta.
 
-**`trazada`** — la curva se dibuja sola, y lo dibujado se apaga poco a poco.
+**`trazada`** — la curva se dibuja sola, y las veinte del minuto se quedan.
 
 `paseo` pone un cometa a recorrer una curva que ya está ahí. Aquí no hay curva
-de antemano y no hay cometa: la punta va trazando y lo que queda detrás se
-desvanece, como el fósforo de un osciloscopio.
+de antemano y no hay cometa: **la punta va trazando**, y cuando termina de
+recorrer la curva entera **los parámetros pegan un salto** y empieza a trazar la
+siguiente. Las anteriores no se borran: se quedan detrás, apagándose. Lo que se
+ve no es una curva con estela — es **una familia entera a la vista**, con el
+presente brillante y el pasado apagándose, como en `pellizco` y por eso con sus
+mismos azules.
 
-Y mientras traza, **los parámetros se mueven**. Eso no es un adorno, es la
-esfera entera: cuando la punta da la vuelta y regresa, la curva ya no es la
-misma que dejó, así que el trazo nuevo no cae encima del viejo. Lo que se ve no
-es una curva con estela — es **la historia de una familia de curvas**, con el
-presente brillante y el pasado apagándose. La estela no se cierra nunca.
+De ahí salen las cuatro decisiones que lo sostienen.
 
-De ahí salen las dos decisiones que lo sostienen. **El encuadre se calcula una
-vez por curva**, abarcando las esquinas del cajón de parámetros por los que va a
-pasar: encuadrando cada instante por su cuenta, la curva se quedaría quieta y
-sería el marco el que se movería, justo lo contrario de lo que se quiere ver. Y
-**cada paso dibuja su trocito con los parámetros de su instante**, que es lo que
-deja el rastro de la deriva.
+**El parámetro no se mueve mientras se dibuja.** Si se moviera, cada trazada
+saldría torcida —el principio con unos valores y el final con otros— y no sería
+la curva de nadie. Quieto, cada trazada **es** una curva de la familia, y lo que
+se compara al verlas juntas son curvas de verdad.
+
+**El bucle cierra.** La vigésima trazada deja los parámetros justo donde los
+cogió la primera, así que vuelve a empezar sin costura. Para eso los
+multiplicadores se redondean a vueltas enteras: 0,618 y 1,618 quedan en **1 y
+2**. Se pierde la inconmensurabilidad —que estaba para que una estela continua
+no se repitiera— y se gana el bucle. Comprobado en las sesenta y una: el paso 20
+y el paso 0 dan exactamente los mismos valores.
+
+**Veinte, porque es lo que cabe en el minuto.** Cada curva está en pantalla un
+minuto y la trazada dura `60/20 = 3 s`, así que el minuto se ve **llenarse**:
+empieza con una sola curva y termina con la familia entera, y al cambiar de
+curva la pizarra queda limpia. El segundero es el propio dibujo.
+
+**El encuadre se calcula una vez por minuto, sobre las veinte.** No sobre las
+esquinas del cajón de parámetros, que sobran: los valores recorren una figura
+dentro del cajón, no el cajón entero, así que encuadrar por las esquinas dejaba
+la curva más pequeña de lo necesario. Encuadrando cada trazada por su cuenta, la
+curva se quedaría quieta y sería el marco el que se movería.
+
+Cuesta **0,13 ms por fotograma** —6.290 puntos, el mismo orden que `pellizco`—
+porque las terminadas se calculan una sola vez y se guardan ya partidas y
+diezmadas: entre un fotograma y el siguiente no cambian. Lo único que se rehace
+es la que se está trazando. Montar un minuto nuevo, con el encuadre sobre las
+veinte, cuesta 4,4 ms una vez por minuto.
 
 Debajo de la hora va el **nombre y la fórmula**, con los valores que llevan los
-parámetros en ese momento.
+parámetros en esa trazada.
 
 ### Las curvas, como texto
 

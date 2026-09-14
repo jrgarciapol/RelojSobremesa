@@ -60,8 +60,11 @@ def por_defecto():
                 "mult": MULTIPLOS[i % len(MULTIPLOS)],
             }
         curvas[c.nombre] = d
-    return {"version": 1, "vuelta": 12.0, "persistencia": 30.0,
-            "curvas": curvas}
+    # `vuelta` son los segundos que tarda la punta en trazar la curva entera, y
+    # de ahí salen las trazadas por minuto: 60/3 = 20. No hace falta un segundo
+    # número para la persistencia porque no hay estela que dure: **se quedan
+    # todas las del minuto**, y al cambiar de curva la pizarra queda limpia.
+    return {"version": 1, "vuelta": 3.0, "curvas": curvas}
 
 
 def cargar(ruta):
@@ -75,9 +78,8 @@ def cargar(ruta):
     cfg = por_defecto()
     with open(ruta, encoding="utf-8") as f:
         suya = json.load(f)
-    for clave in ("vuelta", "persistencia"):
-        if clave in suya:
-            cfg[clave] = float(suya[clave])
+    if "vuelta" in suya:
+        cfg["vuelta"] = float(suya["vuelta"])
     for nombre, pars in (suya.get("curvas") or {}).items():
         cfg["curvas"].setdefault(nombre, {}).update(pars)
     return cfg
@@ -85,6 +87,42 @@ def cargar(ruta):
 
 def valores(cfg, indice, t):
     """Los parámetros de la curva `indice` en el instante `t`."""
+    return _reparto(cfg, indice,
+                    lambda i, mult: 2 * math.pi * (t * mult / BASE + i / 3.0))
+
+
+def ciclos(mult):
+    """Vueltas **enteras** que da un parámetro en un bucle cerrado.
+
+    Un bucle de trazadas tiene que cerrar: la última deja los parámetros justo
+    donde los cogió la primera, y por eso vuelve a empezar sin costura. Con
+    multiplicadores cualesquiera eso no pasa nunca —0,618 no cierra—, así que
+    ahí se redondean a vueltas enteras. La razón áurea y su cuadrado, 0,618 y
+    1,618, quedan en **1 y 2**: se pierde la inconmensurabilidad, que era para
+    que la estela continua no se repitiera, y se conserva lo que aquí importa,
+    que un parámetro vaya al doble que el otro.
+    """
+    return max(1, int(round(abs(mult))))
+
+
+def valores_paso(cfg, indice, j, n):
+    """Los parámetros en el paso `j` de un bucle cerrado de `n` pasos.
+
+    `j = 0` y `j = n` dan lo mismo. Es lo que usa `trazada`: el parámetro no se
+    mueve mientras se dibuja una curva, salta de una a la siguiente.
+    """
+    return _reparto(cfg, indice,
+                    lambda i, mult: 2 * math.pi * (j * ciclos(mult) / float(n)
+                                                   + i / 3.0))
+
+
+def _reparto(cfg, indice, fase_de):
+    """El coseno entre `min` y `max`, con la fase que diga quien llame.
+
+    Lo único que separa el recorrido continuo del de saltos es de dónde sale la
+    fase, así que el resto —los desfases por parámetro, el multiplicador cero,
+    la curva sin entrada en la configuración— se escribe una vez.
+    """
     c = CURVAS[indice % len(CURVAS)]
     suya = (cfg.get("curvas") or {}).get(c.nombre, {})
     fuera = {}
@@ -99,9 +137,8 @@ def valores(cfg, indice, t):
             continue
         # El desfase reparte los parámetros por la vuelta en vez de moverlos
         # todos a la vez.
-        fase = 2 * math.pi * (t * mult / BASE + i / 3.0)
         lo, hi = float(r["min"]), float(r["max"])
-        fuera[q.letra] = lo + (hi - lo) * (1.0 - math.cos(fase)) / 2.0
+        fuera[q.letra] = lo + (hi - lo) * (1.0 - math.cos(fase_de(i, mult))) / 2.0
     return fuera
 
 

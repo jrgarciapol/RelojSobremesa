@@ -1,25 +1,37 @@
-"""Trazada — la curva se dibuja sola, y lo dibujado se apaga poco a poco.
+"""Trazada — la curva se dibuja sola, y las veinte del minuto se quedan.
 
 `paseo` pone un cometa a recorrer una curva que ya está ahí. Aquí no hay curva
-de antemano y no hay cometa: **la punta va trazando y lo que queda detrás se
-desvanece**, como el fósforo de un osciloscopio.
+de antemano y no hay cometa: **la punta va trazando**, y cuando termina de
+recorrer la curva entera **los parámetros pegan un salto** y empieza a trazar
+la siguiente. Las anteriores no se borran: se quedan detrás, apagándose.
 
-Y mientras traza, **los parámetros se mueven**. Eso es lo que hace la esfera, y
-no es un adorno: cuando la punta da la vuelta y regresa, la curva ya no es la
-misma que dejó, así que el trazo nuevo no cae encima del viejo. Lo que se ve no
-es una curva con estela — es **la historia de una familia de curvas**, con el
-presente brillante y el pasado apagándose. La estela no se cierra nunca.
+Eso es lo que hace la esfera, y no es un adorno. Lo que se ve no es una curva
+con estela — es **una familia entera a la vista**, con el presente brillante y
+el pasado apagándose, como en `pellizco` y por eso con sus mismos azules.
 
-De ahí salen las dos decisiones que sostienen todo:
+De ahí salen las cuatro decisiones que sostienen todo:
 
-**El encuadre se calcula una vez por curva, no en cada instante.** Se toman las
-esquinas del cajón de parámetros por los que va a pasar y se encuadran todas
-juntas. Encuadrando cada instante por su cuenta, la curva se quedaría quieta y
-sería el marco el que se movería — justo lo contrario de lo que se quiere ver.
+**El parámetro no se mueve mientras se dibuja.** Si se moviera, cada trazada
+saldría torcida —el principio con unos valores y el final con otros— y no sería
+la curva de nadie. Quieto, cada trazada **es** una curva de la familia, y lo
+que se compara al verlas juntas son curvas de verdad.
 
-**Cada paso dibuja su trocito con los parámetros de su instante.** Por eso se
-usa `curvas_famosas.en()` y no `muestrear()`: hace falta el punto en bruto, con
-el encuadre puesto aparte y a mano.
+**El bucle cierra.** Veinte trazadas por minuto, y la vigésima deja los
+parámetros justo donde los cogió la primera. Para eso los multiplicadores se
+redondean a vueltas enteras (`variacion.ciclos`): 0,618 y 1,618 quedan en 1 y
+2, se pierde la inconmensurabilidad —que era para que una estela continua no se
+repitiera— y se gana que el bucle vuelva al principio sin costura.
+
+**Veinte, porque es lo que cabe en el minuto.** Cada curva está en pantalla un
+minuto; la trazada dura `60/20 = 3 s`. Así el minuto se ve **llenarse**: empieza
+con una sola curva y termina con la familia entera, y al cambiar de curva la
+pizarra queda limpia. El segundero es el propio dibujo.
+
+**El encuadre se calcula una vez por minuto, sobre las veinte.** No sobre las
+esquinas del cajón de parámetros, que sobran: sobre los veinte juegos de
+valores que de verdad se van a dibujar. Encuadrando cada trazada por su cuenta,
+la curva se quedaría quieta y sería el marco el que se movería — justo lo
+contrario de lo que se quiere ver.
 
 `paseo` se queda como está: esto es una esfera aparte.
 """
@@ -34,16 +46,32 @@ from ..lienzo import Lienzo, hsv, tipo
 from .. import variacion
 
 ESCALA = 1.05       # de la curva normalizada al dial
-SUBPASOS = 5        # muestras de curva que se añaden en cada paso
-MUESTRAS_CAJA = 900     # para calcular el encuadre de la curva del minuto
+MUESTRAS = 900      # puntos de una trazada completa
+# Las trazadas viejas van apagadas y detrás: no necesitan los novecientos
+# puntos con que se calculan. Solo la que se está dibujando va entera. Es el
+# mismo reparto que en `pellizco`, y por lo mismo: no ahorra geometría, manda a
+# pintar un tercio de los vértices.
+PASO_VIEJAS = 3
+# Un salto mayor que esto entre dos puntos seguidos no es curva, es una
+# asíntota: hay que partir ahí o queda una raya cruzando el dial.
+SALTO = 0.22
 
 # El fichero que escribe el laboratorio. Si está, manda; si no, la de partida.
 CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                       "..", "..", "curvas.json")
 
 
+def _partir(pts, umbral):
+    """Los tramos de una polilínea, cortados donde pega un salto."""
+    if len(pts) < 3:
+        return ()
+    corte = np.flatnonzero(np.hypot(*np.diff(pts, axis=0).T) > umbral) + 1
+    return tuple(pts[t] for t in np.split(np.arange(len(pts)), corte)
+                 if len(t) >= 3)
+
+
 class Trazada(Esfera):
-    """La curva trazándose sola mientras sus parámetros se mueven."""
+    """La familia entera del minuto, trazada de una en una."""
 
     NOMBRE = "trazada"
     POR_SEGUNDO = 20
@@ -54,100 +82,105 @@ class Trazada(Esfera):
                     else variacion.por_defecto())
         self.f_hora = tipo("RobotoMono-Bold.ttf", lado * 40 / 454.0)
         self.f_nombre = tipo("RobotoMono-Bold.ttf", lado * 19 / 454.0)
-        self._lado_formula = lado
 
-        self.pasos = max(30, int(self.cfg["persistencia"] * self.POR_SEGUNDO))
-        n = self.pasos * SUBPASOS
-        self._anillo = np.zeros((n, 2), np.float32)
-        self._cursor = 0
-        self._paso = None
+        # Cuántas trazadas caben en el minuto. `vuelta` es una petición, no una
+        # orden: se redondea a un número entero de trazadas por minuto para que
+        # el bucle cierre justo cuando cambia la curva.
+        self.cuantas = min(40, max(4, int(round(variacion.BASE
+                                                / max(0.5, self.cfg["vuelta"])))))
+        self.dura = 60.0 / self.cuantas
+
+        # El aspecto de cada hueco de la estela no cambia nunca: el de delante
+        # siempre es el brillante y el del fondo siempre el apagado. Son los
+        # colores de `pellizco`, indexados por EDAD —0 es la que se está
+        # trazando ahora— en vez de por posición en el anillo, porque aquí el
+        # anillo empieza vacío en cada minuto y se va llenando.
+        self._pinta = []
+        for edad in range(self.cuantas):
+            f = edad / (self.cuantas - 1.0)
+            self._pinta.append((
+                hsv(0.52 + 0.16 * f, 0.72, 0.14 + 0.86 * (1.0 - f) ** 2.2),
+                lado * (1.0 + 2.4 * (1.0 - f) ** 3) / 454.0,
+                255 if edad == 0 else 190))
+
+        self._cual = None       # el minuto que hay montado
+        self._hechas = []       # trazadas completas, de la más vieja a la nueva
+        self._clave = None
         self._trazos = ()
-        self._cual = None
-
-        # El color de cada punto de la estela depende solo de su antigüedad, y
-        # eso no cambia nunca. Calcularlo por fotograma fue lo que en
-        # `pellizco` se llevaba el 75% del tiempo.
-        edad = np.linspace(1.0, 0.0, n)         # 1 = el más viejo, 0 = ahora
-        self._tinta = np.empty((n, 3), np.uint8)
-        for i, e in enumerate(edad):
-            c = hsv(0.52 + 0.20 * e, 0.62 - 0.25 * (1 - e),
-                    (1.0 - e) ** 2.0 * 0.94 + 0.02)
-            self._tinta[i] = ((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF)
 
     # ---------- la curva del minuto ----------
     def _curva(self, minuto):
-        """Índice, nombre y encuadre. El encuadre abarca todo el recorrido de
-        los parámetros, así que vale para el minuto entero."""
+        """Índice, nombre y encuadre del minuto, montados una sola vez.
+
+        El encuadre sale de las trazadas que de verdad se van a dibujar, no de
+        las esquinas del cajón de parámetros: como los valores recorren una
+        figura dentro del cajón y no el cajón entero, encuadrar por las
+        esquinas dejaba la curva más pequeña de lo que hace falta.
+        """
         if self._cual == minuto:
             return self._caja
         i = minuto % len(CURVAS)
+        c = CURVAS[i]
+        u = np.linspace(c.t0, c.t1, MUESTRAS)
         xs, ys = [], []
-        for v in variacion.extremos(self.cfg, i):
-            x, y = en(i, np.linspace(CURVAS[i].t0, CURVAS[i].t1, MUESTRAS_CAJA), v)
+        for j in range(self.cuantas):
+            x, y = en(i, u, variacion.valores_paso(self.cfg, i, j, self.cuantas))
             xs.append(x)
             ys.append(y)
         caja = encuadre(np.concatenate(xs), np.concatenate(ys))
         self._cual = minuto
-        self._caja = (i, CURVAS[i].nombre, caja or (0.0, 0.0, 1.0))
+        self._caja = (i, c.nombre, caja or (0.0, 0.0, 1.0))
+        self._hechas = []
+        self._clave = None
         return self._caja
 
-    def _trocito(self, paso):
-        """El trozo de curva que se traza en este paso, ya en píxeles."""
-        t = paso / float(self.POR_SEGUNDO)
-        i, _, (cx, cy, k) = self._curva(int(t // 60))
+    def _trazar(self, i, caja, j, parte=1.0):
+        """La trazada `j` del bucle, dibujada hasta la fracción `parte`."""
         c = CURVAS[i]
-
-        # La punta recorre el tramo de `t` de la curva una vez por vuelta.
-        f0 = ((paso - 1) / float(self.POR_SEGUNDO)) / self.cfg["vuelta"] % 1.0
-        f1 = t / self.cfg["vuelta"] % 1.0
-        if f1 < f0:                      # dio la vuelta: se corta aquí
-            f0 = 0.0
-        u = c.t0 + (c.t1 - c.t0) * np.linspace(f0, f1, SUBPASOS)
-
-        x, y = en(i, u, variacion.valores(self.cfg, i, t))
+        n = MUESTRAS if parte >= 1.0 else max(2, int(MUESTRAS * parte))
+        u = np.linspace(c.t0, c.t0 + (c.t1 - c.t0) * min(1.0, parte), n)
+        x, y = en(i, u, variacion.valores_paso(self.cfg, i, j, self.cuantas))
+        cx, cy, k = caja
         r = self.r * ESCALA
         return np.stack([self.r + (x - cx) * k * r / 2.0,
                          self.r - (y - cy) * k * r / 2.0], axis=1).astype(np.float32)
 
-    # ---------- el anillo ----------
+    # ---------- el reparto del minuto ----------
+    def _donde(self, t):
+        """Minuto, trazada dentro del minuto y cuánto lleva dibujada."""
+        minuto = int(t // 60)
+        dentro = t - minuto * 60.0
+        j = min(self.cuantas - 1, int(dentro / self.dura))
+        return minuto, j, (dentro - j * self.dura) / self.dura
+
     def trazos(self, t):
-        paso = int(round(t * self.POR_SEGUNDO))
-        if paso == self._paso:
+        minuto, j, parte = self._donde(t)
+        i, _, caja = self._curva(minuto)
+
+        # Las completas se calculan una vez y se guardan ya partidas y
+        # diezmadas: entre un fotograma y el siguiente no cambian.
+        while len(self._hechas) < j:
+            k = len(self._hechas)
+            pts = self._trazar(i, caja, k)
+            self._hechas.append(tuple(p[::PASO_VIEJAS]
+                                      for p in _partir(pts, SALTO * self.lado)))
+
+        # Y la de ahora, entera y en cada fotograma: es la que se mueve.
+        clave = (minuto, j, int(parte * MUESTRAS))
+        if clave == self._clave:
             return self._trazos
-        if self._paso is None or not 0 < paso - self._paso <= self.pasos:
-            # Arranque, o salto del reloj: se rellena el pasado entero.
-            for k in range(paso - self.pasos + 1, paso + 1):
-                self._meter(k)
-        else:
-            for k in range(self._paso + 1, paso + 1):
-                self._meter(k)
-        self._paso = paso
-        self._trazos = self._pintar()
-        return self._trazos
+        self._clave = clave
 
-    def _meter(self, paso):
-        a = self._cursor * SUBPASOS
-        self._anillo[a:a + SUBPASOS] = self._trocito(paso)
-        self._cursor = (self._cursor + 1) % self.pasos
-
-    def _pintar(self):
-        """La estela, partida donde pega un salto.
-
-        Salta en tres sitios: cuando la punta da la vuelta y vuelve al
-        principio de la curva, cuando cambia de curva al cambiar el minuto y en
-        las asíntotas. Unir esos puntos dejaría una raya cruzando el dial.
-        """
-        a = self._cursor * SUBPASOS
-        pts = np.concatenate([self._anillo[a:], self._anillo[:a]])
-        g = self.lado / 454.0
-
-        corte = np.flatnonzero(np.hypot(*np.diff(pts, axis=0).T)
-                               > 0.22 * self.lado) + 1
         fuera = []
-        for tramo in np.split(np.arange(len(pts)), corte):
-            if len(tramo) < 3:
-                continue
-            fuera.append(Trazo(pts[tramo], self._tinta[tramo], 2.3 * g, 245))
+        # De la más vieja a la más nueva, para que la nueva quede encima.
+        for k, tramos in enumerate(self._hechas):
+            color, grosor, alfa = self._pinta[min(j - k, self.cuantas - 1)]
+            for pts in tramos:
+                fuera.append(Trazo(pts, color, grosor, alfa))
+        color, grosor, alfa = self._pinta[0]
+        for pts in _partir(self._trazar(i, caja, j, parte), SALTO * self.lado):
+            fuera.append(Trazo(pts, color, grosor, alfa))
+        self._trazos = fuera
         return fuera
 
     # ---------- la hora, el nombre y la fórmula ----------
@@ -165,10 +198,9 @@ class Trazada(Esfera):
         return tipo("RobotoMono-Bold.ttf", alto * 0.52)
 
     def capa(self, t):
-        paso = int(round(t * self.POR_SEGUNDO))
-        minuto = int(t // 60)
+        minuto, j, _ = self._donde(t)
         i, nombre, _ = self._curva(minuto)
-        f, vals = formula(i, variacion.valores(self.cfg, i, paso / float(self.POR_SEGUNDO)))
+        f, vals = formula(i, variacion.valores_paso(self.cfg, i, j, self.cuantas))
 
         lz = Lienzo(self.lado, sup=1)
         lz.texto(self.lado / 2, self.lado * 0.828,
@@ -181,9 +213,9 @@ class Trazada(Esfera):
         if vals:
             lz.texto(self.lado / 2, self.lado * 0.968, vals,
                      self._cabe(lz, vals, self.lado * 15 / 454.0), 0xB08A4A)
-        # Los valores cambian sin parar, así que la capa se rehace a menudo:
-        # dos veces por segundo basta para que las cifras no den saltos.
-        return (minuto, paso // (self.POR_SEGUNDO // 2)), lz.array()
+        # Los valores solo cambian al saltar de trazada, así que la capa se
+        # rehace veinte veces por minuto y no dos por segundo.
+        return (minuto, j), lz.array()
 
 
 ESFERA = Trazada

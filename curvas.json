@@ -1,7 +1,6 @@
 {
  "version": 1,
- "vuelta": 12.0,
- "persistencia": 30.0,
+ "vuelta": 3.0,
  "curvas": {
   "Elipse": {
    "a": {

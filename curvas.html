@@ -90,18 +90,15 @@ textarea { width:100%; height:150px; resize:vertical; line-height:1.45;
       </div>
       <div class="fila">
         <label for="vuelta">vuelta</label>
-        <input type="range" id="vuelta" min="2" max="40" step="0.5">
+        <input type="range" id="vuelta" min="1" max="10" step="0.5">
         <span class="num" id="vueltaN"></span>
       </div>
-      <div class="fila">
-        <label for="persis">estela</label>
-        <input type="range" id="persis" min="4" max="90" step="1">
-        <span class="num" id="persisN"></span>
-      </div>
-      <p class="nota"><b>vuelta</b>: segundos que tarda la punta en recorrer la
-        curva entera. <b>estela</b>: segundos que tarda un trazo en apagarse.
-        Si la estela dura más que la vuelta se ven varias pasadas a la vez, y
-        entre una y otra se lee cuánto han movido los parámetros.</p>
+      <p class="nota"><b>vuelta</b>: segundos que tarda la punta en trazar la
+        curva entera. Al terminarla, los parámetros pegan un salto y empieza la
+        siguiente; las anteriores se quedan, apagándose. De ahí salen las
+        <b>trazadas por minuto</b>: 60 partido por la vuelta, redondeado, para
+        que el bucle cierre justo cuando cambia la curva. No hace falta decir
+        cuánto dura la estela porque se quedan todas las del minuto.</p>
     </div>
   </div>
 
@@ -148,7 +145,7 @@ textarea { width:100%; height:150px; resize:vertical; line-height:1.45;
 
 /*CATALOGO-INICIO*/
 const CATALOGO = [{"nombre":"Circunferencia","expr":{"x":"cos(t)","y":"sin(t)"},"pars":[],"t0":0.0,"t1":6.283185307179586},{"nombre":"Elipse","expr":{"x":"a*cos(t)","y":"sin(t)"},"pars":[["a",1.6,0.3,3.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Astroide","expr":{"x":"pot(cos(t),n)","y":"b*pot(sin(t),n)"},"pars":[["n",3.0,0.4,6.0],["b",1.0,0.4,2.5]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Cardioide","expr":{"r":"1 + b*cos(t)"},"pars":[["b",1.0,0.0,2.5]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Nefroide","expr":{"x":"k*cos(t) - cos(k*t)","y":"k*sin(t) - sin(k*t)"},"pars":[["k",3.0,1.5,7.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Deltoide","expr":{"x":"k*cos(t) + cos(k*t)","y":"k*sin(t) - sin(k*t)"},"pars":[["k",2.0,1.5,7.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Lemniscata de Bernoulli","expr":{"x":"cos(t)/(1 + c*sin(t)**2)","y":"sin(t)*cos(t)/(1 + c*sin(t)**2)"},"pars":[["c",1.0,0.2,3.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Lemniscata de Gerono","expr":{"x":"cos(t)","y":"b*sin(t)*cos(t)"},"pars":[["b",1.0,0.3,2.5]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Caracol de Pascal","expr":{"r":"a + cos(t)"},"pars":[["a",0.6,0.0,2.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Trisectriz de Ceva","expr":{"r":"1 + b*cos(k*t)"},"pars":[["b",2.0,0.5,3.0],["k",2.0,1.0,5.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Cicloide","expr":{"x":"t - a*sin(t)","y":"1 - a*cos(t)"},"pars":[["a",1.0,0.2,2.0]],"t0":0,"t1":18.84955592153876},{"nombre":"Epicicloide de 5 puntas","expr":{"x":"k*cos(t) - cos(k*t)","y":"k*sin(t) - sin(k*t)"},"pars":[["k",6.0,3.0,9.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Hipocicloide de 5 puntas","expr":{"x":"k*cos(t) + cos(k*t)","y":"k*sin(t) - sin(k*t)"},"pars":[["k",4.0,2.0,8.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Epitrocoide","expr":{"x":"a*cos(t) - b*cos(a*t)","y":"a*sin(t) - b*sin(a*t)"},"pars":[["a",5.0,2.0,8.0],["b",3.0,0.5,5.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Hipotrocoide","expr":{"x":"a*cos(t) + b*cos(a*t)","y":"a*sin(t) - b*sin(a*t)"},"pars":[["a",5.0,2.0,8.0],["b",3.0,0.5,5.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Espirógrafo","expr":{"x":"a*cos(t) + b*cos(a*t/b)","y":"a*sin(t) - b*sin(a*t/b)"},"pars":[["a",7.0,3.0,11.0],["b",4.0,1.0,6.0]],"t0":0,"t1":25.132741228718345},{"nombre":"Rosa de tres pétalos","expr":{"r":"cos(k*t)"},"pars":[["k",3.0,1.0,9.0]],"t0":0,"t1":3.141592653589793},{"nombre":"Rosa de cuatro pétalos","expr":{"r":"cos(k*t)"},"pars":[["k",2.0,1.0,9.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Rosa de cinco pétalos","expr":{"r":"cos(k*t)"},"pars":[["k",5.0,1.0,9.0]],"t0":0,"t1":3.141592653589793},{"nombre":"Rosa de ocho pétalos","expr":{"r":"cos(k*t)"},"pars":[["k",4.0,1.0,9.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Rodonea 7/3","expr":{"r":"cos(k*t)"},"pars":[["k",2.3333333333333335,0.5,4.5]],"t0":0,"t1":18.84955592153876},{"nombre":"Espiral de Arquímedes","expr":{"r":"pot(t,n)"},"pars":[["n",1.0,-1.2,1.6]],"t0":0,"t1":18.84955592153876},{"nombre":"Espiral logarítmica","expr":{"r":"exp(b*t)"},"pars":[["b",0.16,0.02,0.45]],"t0":0,"t1":25.132741228718345},{"nombre":"Espiral de Fermat","expr":{"r":"pot(t,n)"},"pars":[["n",0.5,0.2,1.2]],"t0":-25.132741228718345,"t1":25.132741228718345},{"nombre":"Espiral hiperbólica","expr":{"r":"1/pot(t,n)"},"pars":[["n",1.0,0.4,2.0]],"t0":0.35,"t1":31.41592653589793},{"nombre":"Lituus","expr":{"r":"1/pot(t,n)"},"pars":[["n",0.5,0.2,1.6]],"t0":0.06,"t1":25.132741228718345},{"nombre":"Cocleoide","expr":{"r":"sin(a*t)/t"},"pars":[["a",1.0,0.5,3.0]],"t0":0.05,"t1":18.84955592153876},{"nombre":"Involuta de la circunferencia","expr":{"x":"cos(t) + a*t*sin(t)","y":"sin(t) - a*t*cos(t)"},"pars":[["a",1.0,0.3,2.0]],"t0":0,"t1":15.707963267948966},{"nombre":"Clotoide","expr":null,"pars":[["s",4.2,1.5,7.0]],"t0":0,"t1":1},{"nombre":"Catenaria","expr":{"x":"t","y":"cosh(a*t)/a"},"pars":[["a",1.0,0.3,3.0]],"t0":-2.2,"t1":2.2},{"nombre":"Tractriz","expr":{"x":"t - a*tanh(t)","y":"a/cosh(t)"},"pars":[["a",1.0,0.3,2.0]],"t0":-4.5,"t1":4.5},{"nombre":"Bruja de Agnesi","expr":{"x":"2*t","y":"2/(1 + c*t**2)"},"pars":[["c",1.0,0.2,4.0]],"t0":-5,"t1":5},{"nombre":"Serpentina","expr":{"x":"t","y":"t/(1 + c*t**2)"},"pars":[["c",1.0,0.2,4.0]],"t0":-6,"t1":6},{"nombre":"Cúbica de Tschirnhausen","expr":{"x":"3*(t**2 - a)","y":"t*(t**2 - a)"},"pars":[["a",3.0,1.0,6.0]],"t0":-3.2,"t1":3.2},{"nombre":"Folium de Descartes","expr":{"x":"3*t/(1 + pot(t,n))","y":"3*t**2/(1 + pot(t,n))"},"pars":[["n",3.0,2.0,5.0]],"t0":-20,"t1":20},{"nombre":"Cisoide de Diocles","expr":{"x":"2*t**2/(1 + c*t**2)","y":"2*t**3/(1 + c*t**2)"},"pars":[["c",1.0,0.3,3.0]],"t0":-6,"t1":6},{"nombre":"Estrofoide recto","expr":{"x":"(t**2 - a)/(t**2 + 1)","y":"t*(t**2 - a)/(t**2 + 1)"},"pars":[["a",1.0,0.2,4.0]],"t0":-5,"t1":5},{"nombre":"Trisectriz de Maclaurin","expr":{"x":"(t**2 - a)/(t**2 + 1)","y":"t*(t**2 - a)/(t**2 + 1)"},"pars":[["a",3.0,1.0,6.0]],"t0":-6,"t1":6},{"nombre":"Kampyle de Eudoxo","expr":{"x":"1/cos(t)","y":"a*tan(t)/cos(t)"},"pars":[["a",1.0,0.3,2.5]],"t0":-1.15,"t1":1.15},{"nombre":"Bicornio","expr":{"x":"sin(t)","y":"cos(t)**2*(a + cos(t))/(3 + sin(t)**2)"},"pars":[["a",2.0,0.5,4.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Sextica de Cayley","expr":{"r":"4*cos(t/k)**3"},"pars":[["k",3.0,1.5,5.0]],"t0":0,"t1":18.84955592153876},{"nombre":"Nefroide de Freeth","expr":{"r":"1 + b*sin(t/2)"},"pars":[["b",2.0,0.5,3.0]],"t0":0,"t1":12.566370614359172},{"nombre":"Hipopede","expr":{"r":"sqrt(max(4*(c - sin(t)**2), 0))"},"pars":[["c",1.2,0.4,2.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Óvalo de Cassini","expr":{"r":"sqrt(max(cos(2*t) + sqrt(max(c - sin(2*t)**2, 0)), 0))"},"pars":[["c",1.06,0.85,2.2]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Curva de la mariposa","expr":{"r":"exp(cos(t)) - 2*cos(k*t) + sin(t/12)**5"},"pars":[["k",4.0,2.0,5.5]],"t0":0,"t1":75.39822368615503},{"nombre":"Superelipse","expr":{"x":"pot(cos(t),m)","y":"pot(sin(t),m)"},"pars":[["m",0.5,0.2,3.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Curva de Talbot","expr":{"x":"(1 + a*sin(t)**2)*cos(t)","y":"(1 - 2*b + a*sin(t)**2)*sin(t)"},"pars":[["a",1.2,0.3,2.5],["b",0.6,0.1,1.2]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Curva de Lissajous 3:2","expr":{"x":"sin(a*t)","y":"sin(b*t + d)"},"pars":[["a",3.0,1.0,8.0],["b",2.0,1.0,8.0],["d",0.7853981633974483,0.0,3.141592653589793]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Curva de Lissajous 5:4","expr":{"x":"sin(a*t)","y":"sin(b*t + d)"},"pars":[["a",5.0,1.0,8.0],["b",4.0,1.0,8.0],["d",1.0471975511965976,0.0,3.141592653589793]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Trifolio","expr":{"r":"-cos(k*t)*(1 + cos(t))/2 - c*cos(t)"},"pars":[["k",3.0,1.0,6.0],["c",0.3,0.0,1.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Curva en forma de ocho","expr":{"x":"sin(a*t)","y":"sin(t)"},"pars":[["a",2.0,1.0,5.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Pesa","expr":{"x":"sin(t)","y":"pot(sin(t),n)*cos(t)"},"pars":[["n",2.0,1.0,5.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Cuadratriz de Hipias","expr":{"x":"t/tan(t*k*pi/2)","y":"t"},"pars":[["k",1.0,0.5,2.0]],"t0":0.001,"t1":0.999},{"nombre":"Bifolio","expr":{"r":"4*pot(sin(t),n)*cos(t)"},"pars":[["n",2.0,1.0,4.0]],"t0":0,"t1":3.141592653589793},{"nombre":"Piriforme","expr":{"x":"a + sin(t)","y":"cos(t)*(a + sin(t))"},"pars":[["a",1.0,0.5,2.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Lágrima","expr":{"x":"cos(t)","y":"sin(t)*pot(sin(t/2),n)"},"pars":[["n",4.0,1.0,8.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Hipocicloide de 6 puntas","expr":{"x":"k*cos(t) + cos(k*t)","y":"k*sin(t) - sin(k*t)"},"pars":[["k",5.0,2.0,8.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Epicicloide de 3 puntas","expr":{"x":"k*cos(t) - cos(k*t)","y":"k*sin(t) - sin(k*t)"},"pars":[["k",4.0,2.0,8.0]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Curva de Lissajous 7:5","expr":{"x":"sin(a*t)","y":"sin(b*t + d)"},"pars":[["a",7.0,1.0,9.0],["b",5.0,1.0,9.0],["d",0.6283185307179586,0.0,3.141592653589793]],"t0":0.0,"t1":6.283185307179586},{"nombre":"Rodonea 5/2","expr":{"r":"cos(k*t)"},"pars":[["k",2.5,0.5,4.5]],"t0":0,"t1":12.566370614359172},{"nombre":"Astroide alargada","expr":{"x":"cos(t)**3","y":"b*sin(t)**3"},"pars":[["b",1.7,0.5,3.0]],"t0":0.0,"t1":6.283185307179586}];
-const CFG_BASE = {"version":1,"vuelta":12.0,"persistencia":30.0,"curvas":{"Elipse":{"a":{"min":0.655,"max":2.545,"mult":1.0}},"Astroide":{"n":{"min":1.04,"max":4.96,"mult":1.0},"b":{"min":0.4,"max":1.87,"mult":0.618}},"Cardioide":{"b":{"min":0.125,"max":1.875,"mult":1.0}},"Nefroide":{"k":{"min":1.5,"max":5.35,"mult":1.0}},"Deltoide":{"k":{"min":1.5,"max":5.35,"mult":1.0}},"Lemniscata de Bernoulli":{"c":{"min":0.2,"max":2.16,"mult":1.0}},"Lemniscata de Gerono":{"b":{"min":0.3,"max":1.84,"mult":1.0}},"Caracol de Pascal":{"a":{"min":0.0,"max":1.4,"mult":1.0}},"Trisectriz de Ceva":{"b":{"min":1.125,"max":2.875,"mult":1.0},"k":{"min":1.0,"max":3.8,"mult":0.618}},"Cicloide":{"a":{"min":0.37,"max":1.63,"mult":1.0}},"Epicicloide de 5 puntas":{"k":{"min":3.9,"max":8.1,"mult":1.0}},"Hipocicloide de 5 puntas":{"k":{"min":2.0,"max":6.2,"mult":1.0}},"Epitrocoide":{"a":{"min":2.9,"max":7.1,"mult":1.0},"b":{"min":1.425,"max":4.575,"mult":0.618}},"Hipotrocoide":{"a":{"min":2.9,"max":7.1,"mult":1.0},"b":{"min":1.425,"max":4.575,"mult":0.618}},"Espirógrafo":{"a":{"min":4.2,"max":9.8,"mult":1.0},"b":{"min":2.25,"max":5.75,"mult":0.618}},"Rosa de tres pétalos":{"k":{"min":1.0,"max":6.6,"mult":1.0}},"Rosa de cuatro pétalos":{"k":{"min":1.0,"max":6.6,"mult":1.0}},"Rosa de cinco pétalos":{"k":{"min":2.2,"max":7.8,"mult":1.0}},"Rosa de ocho pétalos":{"k":{"min":1.2,"max":6.8,"mult":1.0}},"Rodonea 7/3":{"k":{"min":0.9333,"max":3.7333,"mult":1.0}},"Espiral de Arquímedes":{"n":{"min":-0.36,"max":1.6,"mult":1.0}},"Espiral logarítmica":{"b":{"min":0.02,"max":0.321,"mult":1.0}},"Espiral de Fermat":{"n":{"min":0.2,"max":0.9,"mult":1.0}},"Espiral hiperbólica":{"n":{"min":0.44,"max":1.56,"mult":1.0}},"Lituus":{"n":{"min":0.2,"max":1.18,"mult":1.0}},"Cocleoide":{"a":{"min":0.5,"max":2.25,"mult":1.0}},"Involuta de la circunferencia":{"a":{"min":0.405,"max":1.595,"mult":1.0}},"Clotoide":{"s":{"min":2.275,"max":6.125,"mult":1.0}},"Catenaria":{"a":{"min":0.3,"max":2.19,"mult":1.0}},"Tractriz":{"a":{"min":0.405,"max":1.595,"mult":1.0}},"Bruja de Agnesi":{"c":{"min":0.2,"max":2.86,"mult":1.0}},"Serpentina":{"c":{"min":0.2,"max":2.86,"mult":1.0}},"Cúbica de Tschirnhausen":{"a":{"min":1.25,"max":4.75,"mult":1.0}},"Folium de Descartes":{"n":{"min":2.0,"max":4.1,"mult":1.0}},"Cisoide de Diocles":{"c":{"min":0.3,"max":2.19,"mult":1.0}},"Estrofoide recto":{"a":{"min":0.2,"max":2.86,"mult":1.0}},"Trisectriz de Maclaurin":{"a":{"min":1.25,"max":4.75,"mult":1.0}},"Kampyle de Eudoxo":{"a":{"min":0.3,"max":1.84,"mult":1.0}},"Bicornio":{"a":{"min":0.775,"max":3.225,"mult":1.0}},"Sextica de Cayley":{"k":{"min":1.775,"max":4.225,"mult":1.0}},"Nefroide de Freeth":{"b":{"min":1.125,"max":2.875,"mult":1.0}},"Hipopede":{"c":{"min":0.64,"max":1.76,"mult":1.0}},"Óvalo de Cassini":{"c":{"min":0.85,"max":1.795,"mult":1.0}},"Curva de la mariposa":{"k":{"min":2.775,"max":5.225,"mult":1.0}},"Superelipse":{"m":{"min":0.2,"max":2.16,"mult":1.0}},"Curva de Talbot":{"a":{"min":0.43,"max":1.97,"mult":1.0},"b":{"min":0.215,"max":0.985,"mult":0.618}},"Curva de Lissajous 3:2":{"a":{"min":1.0,"max":5.9,"mult":1.0},"b":{"min":1.0,"max":5.9,"mult":0.618},"d":{"min":0.0,"max":2.1991,"mult":1.618}},"Curva de Lissajous 5:4":{"a":{"min":2.55,"max":7.45,"mult":1.0},"b":{"min":1.55,"max":6.45,"mult":0.618},"d":{"min":0.0,"max":2.1991,"mult":1.618}},"Trifolio":{"k":{"min":1.25,"max":4.75,"mult":1.0},"c":{"min":0.0,"max":0.7,"mult":0.618}},"Curva en forma de ocho":{"a":{"min":1.0,"max":3.8,"mult":1.0}},"Pesa":{"n":{"min":1.0,"max":3.8,"mult":1.0}},"Cuadratriz de Hipias":{"k":{"min":0.5,"max":1.55,"mult":1.0}},"Bifolio":{"n":{"min":1.0,"max":3.1,"mult":1.0}},"Piriforme":{"a":{"min":0.5,"max":1.55,"mult":1.0}},"Lágrima":{"n":{"min":1.55,"max":6.45,"mult":1.0}},"Hipocicloide de 6 puntas":{"k":{"min":2.9,"max":7.1,"mult":1.0}},"Epicicloide de 3 puntas":{"k":{"min":2.0,"max":6.2,"mult":1.0}},"Curva de Lissajous 7:5":{"a":{"min":3.4,"max":9.0,"mult":1.0},"b":{"min":2.2,"max":7.8,"mult":0.618},"d":{"min":0.0,"max":2.1991,"mult":1.618}},"Rodonea 5/2":{"k":{"min":1.1,"max":3.9,"mult":1.0}},"Astroide alargada":{"b":{"min":0.825,"max":2.575,"mult":1.0}}}};
+const CFG_BASE = {"version":1,"vuelta":3.0,"curvas":{"Elipse":{"a":{"min":0.655,"max":2.545,"mult":1.0}},"Astroide":{"n":{"min":1.04,"max":4.96,"mult":1.0},"b":{"min":0.4,"max":1.87,"mult":0.618}},"Cardioide":{"b":{"min":0.125,"max":1.875,"mult":1.0}},"Nefroide":{"k":{"min":1.5,"max":5.35,"mult":1.0}},"Deltoide":{"k":{"min":1.5,"max":5.35,"mult":1.0}},"Lemniscata de Bernoulli":{"c":{"min":0.2,"max":2.16,"mult":1.0}},"Lemniscata de Gerono":{"b":{"min":0.3,"max":1.84,"mult":1.0}},"Caracol de Pascal":{"a":{"min":0.0,"max":1.4,"mult":1.0}},"Trisectriz de Ceva":{"b":{"min":1.125,"max":2.875,"mult":1.0},"k":{"min":1.0,"max":3.8,"mult":0.618}},"Cicloide":{"a":{"min":0.37,"max":1.63,"mult":1.0}},"Epicicloide de 5 puntas":{"k":{"min":3.9,"max":8.1,"mult":1.0}},"Hipocicloide de 5 puntas":{"k":{"min":2.0,"max":6.2,"mult":1.0}},"Epitrocoide":{"a":{"min":2.9,"max":7.1,"mult":1.0},"b":{"min":1.425,"max":4.575,"mult":0.618}},"Hipotrocoide":{"a":{"min":2.9,"max":7.1,"mult":1.0},"b":{"min":1.425,"max":4.575,"mult":0.618}},"Espirógrafo":{"a":{"min":4.2,"max":9.8,"mult":1.0},"b":{"min":2.25,"max":5.75,"mult":0.618}},"Rosa de tres pétalos":{"k":{"min":1.0,"max":6.6,"mult":1.0}},"Rosa de cuatro pétalos":{"k":{"min":1.0,"max":6.6,"mult":1.0}},"Rosa de cinco pétalos":{"k":{"min":2.2,"max":7.8,"mult":1.0}},"Rosa de ocho pétalos":{"k":{"min":1.2,"max":6.8,"mult":1.0}},"Rodonea 7/3":{"k":{"min":0.9333,"max":3.7333,"mult":1.0}},"Espiral de Arquímedes":{"n":{"min":-0.36,"max":1.6,"mult":1.0}},"Espiral logarítmica":{"b":{"min":0.02,"max":0.321,"mult":1.0}},"Espiral de Fermat":{"n":{"min":0.2,"max":0.9,"mult":1.0}},"Espiral hiperbólica":{"n":{"min":0.44,"max":1.56,"mult":1.0}},"Lituus":{"n":{"min":0.2,"max":1.18,"mult":1.0}},"Cocleoide":{"a":{"min":0.5,"max":2.25,"mult":1.0}},"Involuta de la circunferencia":{"a":{"min":0.405,"max":1.595,"mult":1.0}},"Clotoide":{"s":{"min":2.275,"max":6.125,"mult":1.0}},"Catenaria":{"a":{"min":0.3,"max":2.19,"mult":1.0}},"Tractriz":{"a":{"min":0.405,"max":1.595,"mult":1.0}},"Bruja de Agnesi":{"c":{"min":0.2,"max":2.86,"mult":1.0}},"Serpentina":{"c":{"min":0.2,"max":2.86,"mult":1.0}},"Cúbica de Tschirnhausen":{"a":{"min":1.25,"max":4.75,"mult":1.0}},"Folium de Descartes":{"n":{"min":2.0,"max":4.1,"mult":1.0}},"Cisoide de Diocles":{"c":{"min":0.3,"max":2.19,"mult":1.0}},"Estrofoide recto":{"a":{"min":0.2,"max":2.86,"mult":1.0}},"Trisectriz de Maclaurin":{"a":{"min":1.25,"max":4.75,"mult":1.0}},"Kampyle de Eudoxo":{"a":{"min":0.3,"max":1.84,"mult":1.0}},"Bicornio":{"a":{"min":0.775,"max":3.225,"mult":1.0}},"Sextica de Cayley":{"k":{"min":1.775,"max":4.225,"mult":1.0}},"Nefroide de Freeth":{"b":{"min":1.125,"max":2.875,"mult":1.0}},"Hipopede":{"c":{"min":0.64,"max":1.76,"mult":1.0}},"Óvalo de Cassini":{"c":{"min":0.85,"max":1.795,"mult":1.0}},"Curva de la mariposa":{"k":{"min":2.775,"max":5.225,"mult":1.0}},"Superelipse":{"m":{"min":0.2,"max":2.16,"mult":1.0}},"Curva de Talbot":{"a":{"min":0.43,"max":1.97,"mult":1.0},"b":{"min":0.215,"max":0.985,"mult":0.618}},"Curva de Lissajous 3:2":{"a":{"min":1.0,"max":5.9,"mult":1.0},"b":{"min":1.0,"max":5.9,"mult":0.618},"d":{"min":0.0,"max":2.1991,"mult":1.618}},"Curva de Lissajous 5:4":{"a":{"min":2.55,"max":7.45,"mult":1.0},"b":{"min":1.55,"max":6.45,"mult":0.618},"d":{"min":0.0,"max":2.1991,"mult":1.618}},"Trifolio":{"k":{"min":1.25,"max":4.75,"mult":1.0},"c":{"min":0.0,"max":0.7,"mult":0.618}},"Curva en forma de ocho":{"a":{"min":1.0,"max":3.8,"mult":1.0}},"Pesa":{"n":{"min":1.0,"max":3.8,"mult":1.0}},"Cuadratriz de Hipias":{"k":{"min":0.5,"max":1.55,"mult":1.0}},"Bifolio":{"n":{"min":1.0,"max":3.1,"mult":1.0}},"Piriforme":{"a":{"min":0.5,"max":1.55,"mult":1.0}},"Lágrima":{"n":{"min":1.55,"max":6.45,"mult":1.0}},"Hipocicloide de 6 puntas":{"k":{"min":2.9,"max":7.1,"mult":1.0}},"Epicicloide de 3 puntas":{"k":{"min":2.0,"max":6.2,"mult":1.0}},"Curva de Lissajous 7:5":{"a":{"min":3.4,"max":9.0,"mult":1.0},"b":{"min":2.2,"max":7.8,"mult":0.618},"d":{"min":0.0,"max":2.1991,"mult":1.618}},"Rodonea 5/2":{"k":{"min":1.1,"max":3.9,"mult":1.0}},"Astroide alargada":{"b":{"min":0.825,"max":2.575,"mult":1.0}}}};
 /*CATALOGO-FIN*/
 
 /* =====================================================================
@@ -224,26 +221,21 @@ function encuadre(xs, ys) {
 
 /* ---------- cómo varían los parámetros (igual que reloj/variacion.py) ---- */
 const BASE = 60;
-function valores(cfg, c, t) {
+// Vueltas ENTERAS que da un parámetro en un bucle. El bucle tiene que cerrar
+// —la última trazada deja los parámetros donde los cogió la primera—, y con
+// multiplicadores cualesquiera eso no pasa: 0,618 no cierra nunca. Redondeados,
+// 0,618 y 1,618 quedan en 1 y 2: se conserva que uno vaya al doble que el otro.
+function ciclos(mult) { return Math.max(1, Math.round(Math.abs(mult))); }
+
+function valoresPaso(cfg, c, j, n) {
   const suya = (cfg.curvas || {})[c.nombre] || {}, out = {};
   c.pars.forEach((q, i) => {
     const r = suya[q[0]];
     if (!r) { out[q[0]] = q[1]; return; }
     const mult = +r.mult;
     if (!(mult > 0)) { out[q[0]] = (+r.min + +r.max)/2; return; }
-    const fase = 2*Math.PI*(t*mult/BASE + i/3);
+    const fase = 2*Math.PI*(j*ciclos(mult)/n + i/3);
     out[q[0]] = +r.min + (+r.max - +r.min)*(1 - Math.cos(fase))/2;
-  });
-  return out;
-}
-function extremos(cfg, c) {
-  const suya = (cfg.curvas || {})[c.nombre] || {};
-  const base = {}; c.pars.forEach(q => { base[q[0]] = q[1]; });
-  const out = [Object.assign({}, base)];
-  c.pars.forEach(q => {
-    const r = suya[q[0]];
-    if (r) for (const v of [+r.min, +r.max])
-      out.push(Object.assign({}, base, {[q[0]]: v}));
   });
   return out;
 }
@@ -251,13 +243,13 @@ function extremos(cfg, c) {
 /* =====================================================================
    La vista previa: la misma esfera `trazada`.
    ===================================================================== */
-const SUBPASOS = 5, POR_SEGUNDO = 20, ESCALA = 1.05;
+const ESCALA = 1.05, MUESTRAS = 700, PASO_VIEJAS = 3, SALTO = 0.22;
 
 const lienzo = document.getElementById("lienzo");
 const ctx = lienzo.getContext("2d");
 let cfg = JSON.parse(JSON.stringify(CFG_BASE));
 let iCurva = 0, vel = 1, tv = 10*3600 + 9*60, tprev = null;
-let anillo = null, cursor = 0, pasos = 0, tinta = [], caja = null, cajaDe = null;
+let cuantas = 20, dura = 3, pinta = [], caja = null, cajaDe = null, hechas = [];
 
 function hsv(h, s, v) {
   h -= Math.floor(h);
@@ -267,80 +259,97 @@ function hsv(h, s, v) {
   return `rgb(${r*255|0},${g*255|0},${b*255|0})`;
 }
 
+// Cuántas trazadas caben en el minuto, y el aspecto de cada hueco. Son los
+// azules de `pellizco`, indexados por EDAD: 0 es la que se está trazando.
 function rehacer() {
-  pasos = Math.max(30, Math.round(cfg.persistencia * POR_SEGUNDO));
-  anillo = new Float64Array(pasos * SUBPASOS * 2);
-  cursor = 0;
-  // El color de cada punto depende solo de su antigüedad: no cambia nunca.
-  tinta = [];
-  for (let i = 0; i < pasos*SUBPASOS; i++) {
-    const e = 1 - i/(pasos*SUBPASOS - 1);
-    tinta.push(hsv(0.52 + 0.20*e, 0.62 - 0.25*(1-e), Math.pow(1-e, 2)*0.94 + 0.02));
+  cuantas = Math.min(40, Math.max(4, Math.round(60/Math.max(0.5, +cfg.vuelta))));
+  dura = 60/cuantas;
+  const L = lienzo.width;
+  pinta = [];
+  for (let e = 0; e < cuantas; e++) {
+    const f = e/(cuantas - 1);
+    pinta.push([hsv(0.52 + 0.16*f, 0.72, 0.14 + 0.86*Math.pow(1 - f, 2.2)),
+                L*(1 + 2.4*Math.pow(1 - f, 3))/454,
+                e === 0 ? 1 : 0.75]);
   }
-  cajaDe = null;
+  olvidar();
 }
 
-// El encuadre se calcula UNA VEZ por curva, abarcando todo el recorrido de los
-// parámetros. Encuadrando cada instante, la curva se quedaría quieta y sería el
-// marco el que se movería.
+function olvidar() { cajaDe = null; hechas = []; }
+
+// El encuadre se calcula UNA VEZ por curva y sobre las trazadas que de verdad
+// se van a dibujar, no sobre las esquinas del cajón de parámetros: los valores
+// recorren una figura dentro del cajón, no el cajón entero. Encuadrando cada
+// trazada por su cuenta, la curva se quedaría quieta y se movería el marco.
 function encuadrar(c) {
   if (cajaDe === c.nombre) return caja;
   const xs = [], ys = [];
-  for (const v of extremos(cfg, c))
-    for (let i = 0; i < 700; i++) {
-      const [x, y] = c.f(c.t0 + (c.t1 - c.t0)*i/699, v);
+  for (let j = 0; j < cuantas; j++) {
+    const v = valoresPaso(cfg, c, j, cuantas);
+    for (let i = 0; i < 300; i++) {
+      const [x, y] = c.f(c.t0 + (c.t1 - c.t0)*i/299, v);
       xs.push(x); ys.push(y);
     }
+  }
   caja = encuadre(xs, ys) || [0,0,1];
   cajaDe = c.nombre;
   return caja;
 }
 
-function trocito(c, paso) {
-  const t = paso/POR_SEGUNDO, [cx, cy, k] = encuadrar(c);
-  let f0 = (((paso-1)/POR_SEGUNDO)/cfg.vuelta) % 1;
-  const f1 = (t/cfg.vuelta) % 1;
-  if (f1 < f0) f0 = 0;                    // dio la vuelta: se corta aquí
-  const p = valores(cfg, c, t), L = lienzo.width, r = L/2*ESCALA;
-  const a = cursor*SUBPASOS*2;
-  for (let i = 0; i < SUBPASOS; i++) {
-    const u = c.t0 + (c.t1 - c.t0)*(f0 + (f1 - f0)*i/(SUBPASOS - 1));
-    const [x, y] = c.f(u, p);
-    anillo[a + i*2]     = L/2 + (x - cx)*k*r/2;
-    anillo[a + i*2 + 1] = L/2 - (y - cy)*k*r/2;
+// La trazada `j`, dibujada hasta la fracción `parte`, ya en píxeles y partida
+// donde pega un salto: eso es una asíntota, y unir esos dos puntos dejaría una
+// raya cruzando el dial.
+function trazar(c, j, parte, paso) {
+  const n = Math.max(2, Math.round(MUESTRAS*Math.min(1, parte)));
+  const p = valoresPaso(cfg, c, j, cuantas);
+  const [cx, cy, k] = encuadrar(c), L = lienzo.width, r = L/2*ESCALA;
+  const piezas = [];
+  let tramo = [], ax = null, ay = null;
+  for (let i = 0; i < n; i += paso) {
+    const u = c.t0 + (c.t1 - c.t0)*Math.min(1, parte)*(n === 1 ? 0 : i/(n - 1));
+    const [wx, wy] = c.f(u, p);
+    const x = L/2 + (wx - cx)*k*r/2, y = L/2 - (wy - cy)*k*r/2;
+    if (!isFinite(x) || !isFinite(y)
+        || (ax !== null && Math.hypot(x - ax, y - ay) > SALTO*L)) {
+      if (tramo.length >= 6) piezas.push(Float64Array.from(tramo));
+      tramo = [];
+    }
+    if (isFinite(x) && isFinite(y)) { tramo.push(x, y); ax = x; ay = y; }
+    else { ax = null; }
   }
-  cursor = (cursor + 1) % pasos;
+  if (tramo.length >= 6) piezas.push(Float64Array.from(tramo));
+  return piezas;
 }
 
 function pintar(t) {
   const c = CATALOGO[iCurva], L = lienzo.width;
   ctx.fillStyle = "#000"; ctx.fillRect(0, 0, L, L);
-  const paso = Math.round(t*POR_SEGUNDO);
-  if (pintar.paso === undefined || !(paso - pintar.paso > 0 && paso - pintar.paso <= pasos)) {
-    for (let k = paso - pasos + 1; k <= paso; k++) trocito(c, k);
-  } else {
-    for (let k = pintar.paso + 1; k <= paso; k++) trocito(c, k);
-  }
-  pintar.paso = paso;
 
-  // La estela, partida donde pega un salto: al dar la vuelta y en las asíntotas.
-  const n = pasos*SUBPASOS, a = cursor*SUBPASOS;
+  // En el laboratorio la curva no cambia con el minuto —se elige a mano—, así
+  // que el bucle se cuenta sobre el minuto de reloj y se reinicia con él.
+  const minuto = Math.floor(t/60);
+  if (pintar.minuto !== minuto) { pintar.minuto = minuto; hechas = []; }
+  const dentro = t - minuto*60;
+  const j = Math.min(cuantas - 1, Math.floor(dentro/dura));
+  const parte = (dentro - j*dura)/dura;
+  while (hechas.length < j) hechas.push(trazar(c, hechas.length, 1, PASO_VIEJAS));
+
   ctx.lineCap = "round"; ctx.lineJoin = "round";
-  ctx.lineWidth = 2.3*L/454; ctx.globalAlpha = 0.96;
-  let px = null, py = null;
-  for (let j = 0; j < n; j++) {
-    const i = (a + j) % n;
-    const x = anillo[i*2], y = anillo[i*2 + 1];
-    if (px !== null && Math.hypot(x - px, y - py) < 0.22*L && isFinite(x) && isFinite(y)) {
-      ctx.strokeStyle = tinta[j];
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+  const brochazo = (piezas, edad) => {
+    const [color, grosor, alfa] = pinta[Math.min(edad, cuantas - 1)];
+    ctx.strokeStyle = color; ctx.lineWidth = grosor; ctx.globalAlpha = alfa;
+    for (const q of piezas) {
+      ctx.beginPath(); ctx.moveTo(q[0], q[1]);
+      for (let i = 2; i < q.length; i += 2) ctx.lineTo(q[i], q[i+1]);
+      ctx.stroke();
     }
-    px = x; py = y;
-  }
+  };
+  hechas.forEach((piezas, k) => brochazo(piezas, j - k));
+  brochazo(trazar(c, j, parte, 1), 0);
   ctx.globalAlpha = 1;
 
   // La hora y la fórmula, como en la esfera.
-  const p = valores(cfg, c, paso/POR_SEGUNDO);
+  const p = valoresPaso(cfg, c, j, cuantas);
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.font = `${L*40/454}px "Roboto Mono", monospace`;
   ctx.fillStyle = "rgba(242,245,248,.9)";
@@ -438,7 +447,7 @@ function mandosPars() {
       caja.querySelector(`[data-n="${letra}-mult"]`).textContent = "×" + (+suya[letra].mult).toFixed(2);
       caja.querySelector(`input[data-p="${letra}"][data-q="min"]`).value = suya[letra].min;
       caja.querySelector(`input[data-p="${letra}"][data-q="max"]`).value = suya[letra].max;
-      cajaDe = null;                      // el recorrido cambió: reencuadrar
+      olvidar();                          // el recorrido cambió: reencuadrar
       escribirJson();
     });
   });
@@ -454,21 +463,17 @@ function escribirJson() {
 
 function leerGlobales() {
   document.getElementById("vuelta").value = cfg.vuelta;
-  document.getElementById("persis").value = cfg.persistencia;
-  document.getElementById("vueltaN").textContent = (+cfg.vuelta).toFixed(1) + " s";
-  document.getElementById("persisN").textContent = (+cfg.persistencia).toFixed(0) + " s";
+  document.getElementById("vueltaN").textContent =
+    (+cfg.vuelta).toFixed(1) + " s   (" + cuantas + " por minuto)";
 }
 
 elCual.addEventListener("change", () => {
-  iCurva = +elCual.value; cajaDe = null; pintarFormula(); mandosPars();
+  iCurva = +elCual.value; olvidar(); pintarFormula(); mandosPars();
 });
-for (const id of ["vuelta", "persis"]) {
-  document.getElementById(id).addEventListener("input", (e) => {
-    if (id === "vuelta") cfg.vuelta = +e.target.value;
-    else { cfg.persistencia = +e.target.value; rehacer(); }
-    leerGlobales(); escribirJson();
-  });
-}
+document.getElementById("vuelta").addEventListener("input", (e) => {
+  cfg.vuelta = +e.target.value;
+  rehacer(); leerGlobales(); escribirJson();
+});
 document.querySelectorAll("[data-v]").forEach(b => {
   b.addEventListener("click", () => {
     vel = +b.dataset.v;
