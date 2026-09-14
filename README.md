@@ -52,6 +52,25 @@ multiplicadores en botones, y en `reloj.bat` es la opción 5.
 
 (En Linux y en la Pi, `python3` en vez de `python`.)
 
+**En una Steam Deck: `./deck.sh`**, en modo escritorio desde Konsole. Mismo
+menú que el `.bat`.
+
+SteamOS tiene la raíz de **solo lectura y en A/B**: cada actualización escribe
+una imagen nueva en la partición dormida y arranca en ella, así que **todo lo
+que no esté en `/home` desaparece**. Por eso `deck.sh` no instala nada en el
+sistema — ni `pacman`, ni `steamos-readonly disable` — sino que usa un entorno
+virtual dentro de la carpeta del proyecto, que vive en `/home` y sobrevive.
+SDL2 tampoco hace falta instalarlo: `pysdl2-dll` trae sus propios binarios
+dentro del paquete de Python.
+
+Y si ya tienes un entorno con esta pila —el del simulador de conducción usa
+exactamente la misma— lo busca y lo reutiliza en vez de montar otro. Para
+forzar uno concreto, `RELOJ_PYTHON=/ruta/al/python ./deck.sh`.
+
+La pantalla de la Deck es de 1280×800, así que a pantalla completa el dial sale
+de **800 px**: casi el mismo tamaño con el que está medido todo el proyecto.
+Y es **OLED**, que es el panel para el que se dibujaron estas esferas.
+
 Con la ventana abierta no hace falta volver a la consola para nada:
 
 | tecla | |
