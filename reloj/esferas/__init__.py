@@ -1,7 +1,7 @@
 """Catálogo de esferas.
 
-Veintiocho nombres salidos de dieciocho módulos, porque muchas son variantes de
-otra: las ocho `digital` son la misma maquetación con distinta tipografía, y
+Veintinueve nombres salidos de diecinueve módulos, porque muchas son variantes
+de otra: las ocho `digital` son la misma maquetación con distinta tipografía, y
 `rosavivid`, `pulsoxl`, `finita`, `rosca`, `enlazada`, `rotulada`, `pellizco` y
 `bordada` son subclases de su hermana. En el Garmin cada una de las quince originales era un proyecto Connect
 IQ entero, con su manifiesto y su propio id de app.
@@ -30,6 +30,7 @@ _registrar("superficie", ["superficie"])
 _registrar("grabada", ["grabada"])
 _registrar("pintada", ["pintada"])
 _registrar("paseo", ["paseo"])
+_registrar("trazada", ["trazada"])
 _registrar("letras", ["letras"])
 _registrar("orbita", ["orbita"])
 _registrar("pulso", ["pulso", "pulsoxl"])
@@ -42,7 +43,7 @@ DISPONIBLES = tuple(sorted(CATALOGO))
 # Por familias, que es como se miran cuando se comparan.
 FAMILIAS = (
     ("analógicas", ("disco", "rosa", "rosavivid")),
-    ("curvas célebres", ("paseo",)),
+    ("curvas célebres", ("trazada", "paseo")),
     ("geometría", ("pintada", "grabada", "superficie", "enlazada", "hopf",
                    "rosca", "toro", "pellizco", "rotulada", "eliptica",
                    "bordada", "finita")),

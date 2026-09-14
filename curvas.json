@@ -1,0 +1,492 @@
+{
+ "version": 1,
+ "vuelta": 12.0,
+ "persistencia": 30.0,
+ "curvas": {
+  "Elipse": {
+   "a": {
+    "min": 0.655,
+    "max": 2.545,
+    "mult": 1.0
+   }
+  },
+  "Astroide": {
+   "n": {
+    "min": 1.04,
+    "max": 4.96,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 0.4,
+    "max": 1.87,
+    "mult": 0.618
+   }
+  },
+  "Cardioide": {
+   "b": {
+    "min": 0.125,
+    "max": 1.875,
+    "mult": 1.0
+   }
+  },
+  "Nefroide": {
+   "k": {
+    "min": 1.5,
+    "max": 5.35,
+    "mult": 1.0
+   }
+  },
+  "Deltoide": {
+   "k": {
+    "min": 1.5,
+    "max": 5.35,
+    "mult": 1.0
+   }
+  },
+  "Lemniscata de Bernoulli": {
+   "c": {
+    "min": 0.2,
+    "max": 2.16,
+    "mult": 1.0
+   }
+  },
+  "Lemniscata de Gerono": {
+   "b": {
+    "min": 0.3,
+    "max": 1.84,
+    "mult": 1.0
+   }
+  },
+  "Caracol de Pascal": {
+   "a": {
+    "min": 0.0,
+    "max": 1.4,
+    "mult": 1.0
+   }
+  },
+  "Trisectriz de Ceva": {
+   "b": {
+    "min": 1.125,
+    "max": 2.875,
+    "mult": 1.0
+   },
+   "k": {
+    "min": 1.0,
+    "max": 3.8,
+    "mult": 0.618
+   }
+  },
+  "Cicloide": {
+   "a": {
+    "min": 0.37,
+    "max": 1.63,
+    "mult": 1.0
+   }
+  },
+  "Epicicloide de 5 puntas": {
+   "k": {
+    "min": 3.9,
+    "max": 8.1,
+    "mult": 1.0
+   }
+  },
+  "Hipocicloide de 5 puntas": {
+   "k": {
+    "min": 2.0,
+    "max": 6.2,
+    "mult": 1.0
+   }
+  },
+  "Epitrocoide": {
+   "a": {
+    "min": 2.9,
+    "max": 7.1,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 1.425,
+    "max": 4.575,
+    "mult": 0.618
+   }
+  },
+  "Hipotrocoide": {
+   "a": {
+    "min": 2.9,
+    "max": 7.1,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 1.425,
+    "max": 4.575,
+    "mult": 0.618
+   }
+  },
+  "Espirógrafo": {
+   "a": {
+    "min": 4.2,
+    "max": 9.8,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 2.25,
+    "max": 5.75,
+    "mult": 0.618
+   }
+  },
+  "Rosa de tres pétalos": {
+   "k": {
+    "min": 1.0,
+    "max": 6.6,
+    "mult": 1.0
+   }
+  },
+  "Rosa de cuatro pétalos": {
+   "k": {
+    "min": 1.0,
+    "max": 6.6,
+    "mult": 1.0
+   }
+  },
+  "Rosa de cinco pétalos": {
+   "k": {
+    "min": 2.2,
+    "max": 7.8,
+    "mult": 1.0
+   }
+  },
+  "Rosa de ocho pétalos": {
+   "k": {
+    "min": 1.2,
+    "max": 6.8,
+    "mult": 1.0
+   }
+  },
+  "Rodonea 7/3": {
+   "k": {
+    "min": 0.9333,
+    "max": 3.7333,
+    "mult": 1.0
+   }
+  },
+  "Espiral de Arquímedes": {
+   "n": {
+    "min": -0.36,
+    "max": 1.6,
+    "mult": 1.0
+   }
+  },
+  "Espiral logarítmica": {
+   "b": {
+    "min": 0.02,
+    "max": 0.321,
+    "mult": 1.0
+   }
+  },
+  "Espiral de Fermat": {
+   "n": {
+    "min": 0.2,
+    "max": 0.9,
+    "mult": 1.0
+   }
+  },
+  "Espiral hiperbólica": {
+   "n": {
+    "min": 0.44,
+    "max": 1.56,
+    "mult": 1.0
+   }
+  },
+  "Lituus": {
+   "n": {
+    "min": 0.2,
+    "max": 1.18,
+    "mult": 1.0
+   }
+  },
+  "Cocleoide": {
+   "a": {
+    "min": 0.5,
+    "max": 2.25,
+    "mult": 1.0
+   }
+  },
+  "Involuta de la circunferencia": {
+   "a": {
+    "min": 0.405,
+    "max": 1.595,
+    "mult": 1.0
+   }
+  },
+  "Clotoide": {
+   "s": {
+    "min": 2.275,
+    "max": 6.125,
+    "mult": 1.0
+   }
+  },
+  "Catenaria": {
+   "a": {
+    "min": 0.3,
+    "max": 2.19,
+    "mult": 1.0
+   }
+  },
+  "Tractriz": {
+   "a": {
+    "min": 0.405,
+    "max": 1.595,
+    "mult": 1.0
+   }
+  },
+  "Bruja de Agnesi": {
+   "c": {
+    "min": 0.2,
+    "max": 2.86,
+    "mult": 1.0
+   }
+  },
+  "Serpentina": {
+   "c": {
+    "min": 0.2,
+    "max": 2.86,
+    "mult": 1.0
+   }
+  },
+  "Cúbica de Tschirnhausen": {
+   "a": {
+    "min": 1.25,
+    "max": 4.75,
+    "mult": 1.0
+   }
+  },
+  "Folium de Descartes": {
+   "n": {
+    "min": 2.0,
+    "max": 4.1,
+    "mult": 1.0
+   }
+  },
+  "Cisoide de Diocles": {
+   "c": {
+    "min": 0.3,
+    "max": 2.19,
+    "mult": 1.0
+   }
+  },
+  "Estrofoide recto": {
+   "a": {
+    "min": 0.2,
+    "max": 2.86,
+    "mult": 1.0
+   }
+  },
+  "Trisectriz de Maclaurin": {
+   "a": {
+    "min": 1.25,
+    "max": 4.75,
+    "mult": 1.0
+   }
+  },
+  "Kampyle de Eudoxo": {
+   "a": {
+    "min": 0.3,
+    "max": 1.84,
+    "mult": 1.0
+   }
+  },
+  "Bicornio": {
+   "a": {
+    "min": 0.775,
+    "max": 3.225,
+    "mult": 1.0
+   }
+  },
+  "Sextica de Cayley": {
+   "k": {
+    "min": 1.775,
+    "max": 4.225,
+    "mult": 1.0
+   }
+  },
+  "Nefroide de Freeth": {
+   "b": {
+    "min": 1.125,
+    "max": 2.875,
+    "mult": 1.0
+   }
+  },
+  "Hipopede": {
+   "c": {
+    "min": 0.64,
+    "max": 1.76,
+    "mult": 1.0
+   }
+  },
+  "Óvalo de Cassini": {
+   "c": {
+    "min": 0.85,
+    "max": 1.795,
+    "mult": 1.0
+   }
+  },
+  "Curva de la mariposa": {
+   "k": {
+    "min": 2.775,
+    "max": 5.225,
+    "mult": 1.0
+   }
+  },
+  "Superelipse": {
+   "m": {
+    "min": 0.2,
+    "max": 2.16,
+    "mult": 1.0
+   }
+  },
+  "Curva de Talbot": {
+   "a": {
+    "min": 0.43,
+    "max": 1.97,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 0.215,
+    "max": 0.985,
+    "mult": 0.618
+   }
+  },
+  "Curva de Lissajous 3:2": {
+   "a": {
+    "min": 1.0,
+    "max": 5.9,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 1.0,
+    "max": 5.9,
+    "mult": 0.618
+   },
+   "d": {
+    "min": 0.0,
+    "max": 2.1991,
+    "mult": 1.618
+   }
+  },
+  "Curva de Lissajous 5:4": {
+   "a": {
+    "min": 2.55,
+    "max": 7.45,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 1.55,
+    "max": 6.45,
+    "mult": 0.618
+   },
+   "d": {
+    "min": 0.0,
+    "max": 2.1991,
+    "mult": 1.618
+   }
+  },
+  "Trifolio": {
+   "k": {
+    "min": 1.25,
+    "max": 4.75,
+    "mult": 1.0
+   },
+   "c": {
+    "min": 0.0,
+    "max": 0.7,
+    "mult": 0.618
+   }
+  },
+  "Curva en forma de ocho": {
+   "a": {
+    "min": 1.0,
+    "max": 3.8,
+    "mult": 1.0
+   }
+  },
+  "Pesa": {
+   "n": {
+    "min": 1.0,
+    "max": 3.8,
+    "mult": 1.0
+   }
+  },
+  "Cuadratriz de Hipias": {
+   "k": {
+    "min": 0.5,
+    "max": 1.55,
+    "mult": 1.0
+   }
+  },
+  "Bifolio": {
+   "n": {
+    "min": 1.0,
+    "max": 3.1,
+    "mult": 1.0
+   }
+  },
+  "Piriforme": {
+   "a": {
+    "min": 0.5,
+    "max": 1.55,
+    "mult": 1.0
+   }
+  },
+  "Lágrima": {
+   "n": {
+    "min": 1.55,
+    "max": 6.45,
+    "mult": 1.0
+   }
+  },
+  "Hipocicloide de 6 puntas": {
+   "k": {
+    "min": 2.9,
+    "max": 7.1,
+    "mult": 1.0
+   }
+  },
+  "Epicicloide de 3 puntas": {
+   "k": {
+    "min": 2.0,
+    "max": 6.2,
+    "mult": 1.0
+   }
+  },
+  "Curva de Lissajous 7:5": {
+   "a": {
+    "min": 3.4,
+    "max": 9.0,
+    "mult": 1.0
+   },
+   "b": {
+    "min": 2.2,
+    "max": 7.8,
+    "mult": 0.618
+   },
+   "d": {
+    "min": 0.0,
+    "max": 2.1991,
+    "mult": 1.618
+   }
+  },
+  "Rodonea 5/2": {
+   "k": {
+    "min": 1.1,
+    "max": 3.9,
+    "mult": 1.0
+   }
+  },
+  "Astroide alargada": {
+   "b": {
+    "min": 0.825,
+    "max": 2.575,
+    "mult": 1.0
+   }
+  }
+ }
+}

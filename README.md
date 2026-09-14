@@ -111,7 +111,7 @@ El banco de medida es `python3 utiles/medir.py 1080`.
 
 ## Verlas sin la Raspberry: `reloj.html`
 
-Una reimplementación en Canvas de las veintiocho, en una página suelta. Doble
+Una reimplementación en Canvas de las veintinueve, en una página suelta. Doble
 clic y se abren **en marcha**, con rejilla de 1, 2×2, 3×3 o todas a la vez,
 pantalla completa, un cursor para recorrer el día y otro para las pulsaciones.
 
@@ -292,6 +292,81 @@ frena y donde más ganas hay de verla.
 en la cabeza es infinita: la cola salía en perpendicular, como una antena. Con
 el suavizado de Hermite —pendiente cero en los dos extremos— despega rozando la
 curva y luego se levanta.
+
+**`trazada`** — la curva se dibuja sola, y lo dibujado se apaga poco a poco.
+
+`paseo` pone un cometa a recorrer una curva que ya está ahí. Aquí no hay curva
+de antemano y no hay cometa: la punta va trazando y lo que queda detrás se
+desvanece, como el fósforo de un osciloscopio.
+
+Y mientras traza, **los parámetros se mueven**. Eso no es un adorno, es la
+esfera entera: cuando la punta da la vuelta y regresa, la curva ya no es la
+misma que dejó, así que el trazo nuevo no cae encima del viejo. Lo que se ve no
+es una curva con estela — es **la historia de una familia de curvas**, con el
+presente brillante y el pasado apagándose. La estela no se cierra nunca.
+
+De ahí salen las dos decisiones que lo sostienen. **El encuadre se calcula una
+vez por curva**, abarcando las esquinas del cajón de parámetros por los que va a
+pasar: encuadrando cada instante por su cuenta, la curva se quedaría quieta y
+sería el marco el que se movería, justo lo contrario de lo que se quiere ver. Y
+**cada paso dibuja su trocito con los parámetros de su instante**, que es lo que
+deja el rastro de la deriva.
+
+Debajo de la hora va el **nombre y la fórmula**, con los valores que llevan los
+parámetros en ese momento.
+
+### Las curvas, como texto
+
+Parametrizarlas obligó a rehacer el catálogo, y la forma de hacerlo resolvió de
+paso un problema que llevaba tres capítulos apareciendo.
+
+Cada curva se guarda como **texto**: `x` e `y` (o `r`) escritos como se
+escribirían en un papel. La fórmula que se enseña en la esfera y en el
+laboratorio **es la definición**, no una copia, así que no pueden discrepar. Y
+el navegador evalúa las mismas sesenta y una curvas con los parámetros que sea
+sin que nadie las reescriba en JavaScript: el mismo texto lo evalúan numpy y
+`Math`, cada uno con su tabla de funciones.
+
+Comprobado: sesenta y una curvas, cuarenta puntos cada una, parámetros en el
+centro del rango — **la diferencia máxima entre numpy y Chromium es 1e-12**.
+Son la misma implementación.
+
+Eso permitió tirar los 315 KB de puntos muestreados que `exporta_curvas.py`
+metía en el HTML para `paseo`: ahora viajan **12 KB de fórmulas**.
+
+**Los parámetros son de forma, no de escala.** Como cada curva se encuadra
+sola, un parámetro que solo multiplica se vuelve invisible: el radio de una
+circunferencia no se ve, la razón de los ejes de una elipse sí. Por eso la
+circunferencia es la única sin parámetros — no tiene ninguna libertad de forma,
+y fingir una sería mentir. Y **los valores por defecto son los de siempre**, de
+modo que `paseo` sigue dibujando exactamente lo mismo: comprobado lámina a
+lámina, diferencia cero.
+
+### El laboratorio: `curvas.html`
+
+Los rangos y las velocidades no se adivinan, se miran. `curvas.html` es una
+página aparte con la vista previa de `trazada` a tamaño grande y, al lado, para
+la curva que sea: su fórmula, y por cada parámetro **desde**, **hasta** y
+**velocidad**.
+
+La velocidad no va en segundos sino en un **multiplicador del reloj**:
+
+    periodo = 60 s / multiplicador
+
+y 60 s es justo lo que cada curva está en pantalla. Así que **1** es una ida y
+vuelta completa mientras se ve esa curva, **0,5** media, **2** dos y **0** la
+deja quieta. No hay que pensar en segundos en ningún momento.
+
+El recorrido es un coseno y no un diente de sierra —un parámetro que llega al
+extremo y da media vuelta de golpe se ve como un tirón— y cada parámetro
+arranca con un desfase distinto: si no, los dos de una Lissajous suben y bajan a
+la vez y la curva solo crece y mengua.
+
+Abajo sale la configuración en JSON. Se copia y se pega, o se guarda como
+`curvas.json` en la carpeta del proyecto: `trazada` lo lee al arrancar, y si no
+está usa esos mismos valores de partida. (El botón de descarga solo funciona
+abriendo el fichero desde el disco; el visor publicado bloquea las descargas, y
+para eso está Copiar.)
 
 Tres cosas que salieron de dibujarlas todas y mirarlas:
 
